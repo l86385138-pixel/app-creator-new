@@ -1,0 +1,68 @@
+name: Build APK
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: App name
+        required: true
+        default: App Creator App
+      web_url:
+        description: Website URL
+        required: true
+        default: https://example.com
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Create Android project
+        shell: bash
+        run: |
+          mkdir -p android/app/src/main/java/com/appcreator/newapp android/app/src/main/res/drawable android/app/src/main/res/mipmap-hdpi
+          cat > android/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name='AppCreator'
+          include ':app'
+          EOF
+          cat > android/build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.6.1' apply false }
+          EOF
+          cat > android/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android { namespace 'com.appcreator.newapp'; compileSdk 35
+            defaultConfig { applicationId 'com.appcreator.newapp'; minSdk 23; targetSdk 35; versionCode 1; versionName '1.0' }
+          }
+          EOF
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:theme="@style/AppTheme" android:label="${{ inputs.app_name }}"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+          EOF
+          mkdir -p android/app/src/main/res/values
+          cat > android/app/src/main/res/values/styles.xml <<'EOF'
+          <resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item></style></resources>
+          EOF
+          cat > android/app/src/main/java/com/appcreator/newapp/MainActivity.java <<'EOF'
+          package com.appcreator.newapp;
+          import android.app.*; import android.os.*; import android.webkit.*;
+          public class MainActivity extends Activity { public void onCreate(Bundle b){super.onCreate(b); WebView w=new WebView(this); w.getSettings().setJavaScriptEnabled(true); w.getSettings().setDomStorageEnabled(true); w.setWebViewClient(new WebViewClient()); w.loadUrl("${{ inputs.web_url }}"); setContentView(w);} }
+          EOF
+      - name: Build debug APK
+        working-directory: android
+        run: gradle wrapper --gradle-version 8.10.2 && ./gradlew assembleDebug --no-daemon
+      - name: Validate APK
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
