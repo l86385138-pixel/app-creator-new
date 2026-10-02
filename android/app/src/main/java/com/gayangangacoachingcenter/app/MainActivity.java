@@ -18,6 +18,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.storage.FirebaseStorage;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +26,7 @@ import java.util.Map;
 public class MainActivity extends Activity {
     private FirebaseAuth auth;
     private FirebaseFirestore db;
+    private FirebaseStorage storage;
     private int dp(float v){ return (int)(v * getResources().getDisplayMetrics().density + 0.5f); }
 
     private TextView tv(String text,float size,int color,boolean bold){
@@ -52,6 +54,7 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         auth=FirebaseAuth.getInstance();
         db=FirebaseFirestore.getInstance();
+        storage=FirebaseStorage.getInstance();
         if(auth.getCurrentUser()==null) setContentView(authScreen(false));
         else loadHome();
     }
@@ -147,6 +150,7 @@ public class MainActivity extends Activity {
         c.setOnClickListener(v -> {
             if(title.equals("Paid Classes") || title.equals("Free Courses")) coursesScreen();
             else if(title.equals("Free Weekly Test") || title.equals("Paid Test Series") || title.equals("Daily Quiz")) testsScreen();
+            else if(title.equals("Books") || title.equals("PDF Class Notes")) notesScreen();
             else showFeature(title);
         });
         return c;
@@ -199,6 +203,57 @@ public class MainActivity extends Activity {
         TextView body=tv(title+"\n\n"+description+"\n\n"+(price.isEmpty()?"":"Price: ₹ "+price)+"\n\nयह course Firebase Firestore से load हुआ है.",18,Color.DKGRAY,false);
         body.setGravity(Gravity.TOP); body.setPadding(dp(22),dp(25),dp(22),dp(25));
         root.addView(body,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
+    }
+
+    private void notesScreen(){
+        LinearLayout root=baseScreen("Books & PDF Notes");
+        TextView loading=tv("Study material loading from Firebase...",17,Color.DKGRAY,false);
+        loading.setPadding(dp(20),dp(20),dp(20),dp(20));
+        root.addView(loading,new LinearLayout.LayoutParams(-1,-1));
+        setContentView(root);
+        db.collection("notes").get().addOnSuccessListener(result -> {
+            LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(14),dp(10),dp(14),dp(20));
+            if(result.isEmpty()){
+                TextView empty=tv("अभी कोई PDF/Notes उपलब्ध नहीं है.\\n\\nFirestore → notes collection में material जोड़ें.",17,Color.DKGRAY,false);
+                empty.setGravity(Gravity.CENTER); list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
+            } else {
+                for(QueryDocumentSnapshot doc:result){
+                    String title=doc.getString("title"); if(title==null) title="Study Material";
+                    String description=doc.getString("description"); if(description==null) description="";
+                    String path=doc.getString("storagePath");
+                    list.addView(noteCard(title,description,path));
+                }
+            }
+            root.removeViews(1,root.getChildCount()-1);
+            root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+        }).addOnFailureListener(e -> loading.setText("Notes load नहीं हो सके.\\n\\n"+error(e)));
+    }
+
+    private LinearLayout noteCard(String title,String description,String storagePath){
+        LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16),dp(14),dp(16),dp(12)); card.setBackground(bg(Color.WHITE,12));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(145)); lp.setMargins(0,dp(7),0,dp(7)); card.setLayoutParams(lp);
+        TextView t=tv("📄  "+title,18,Color.rgb(25,118,210),true); card.addView(t,new LinearLayout.LayoutParams(-1,dp(38)));
+        TextView d=tv(description,14,Color.DKGRAY,false); d.setGravity(Gravity.TOP); card.addView(d,new LinearLayout.LayoutParams(-1,0,1));
+        TextView open=button("OPEN PDF / NOTES"); card.addView(open,new LinearLayout.LayoutParams(-1,dp(42)));
+        open.setOnClickListener(v -> openMaterial(storagePath));
+        return card;
+    }
+
+    private void openMaterial(String storagePath){
+        if(storagePath==null || storagePath.trim().isEmpty()){
+            Toast.makeText(this,"इस material का Storage path नहीं मिला.",Toast.LENGTH_LONG).show();
+            return;
+        }
+        Toast.makeText(this,"PDF link तैयार हो रहा है...",Toast.LENGTH_SHORT).show();
+        storage.getReference().child(storagePath).getDownloadUrl().addOnSuccessListener(uri -> {
+            try{
+                android.content.Intent intent=new android.content.Intent(android.content.Intent.ACTION_VIEW,uri);
+                startActivity(intent);
+            }catch(Exception e){
+                Toast.makeText(this,"PDF खोलने के लिए कोई viewer उपलब्ध नहीं है.",Toast.LENGTH_LONG).show();
+            }
+        }).addOnFailureListener(e -> Toast.makeText(this,"PDF नहीं खुल सका. Firebase Storage rules/path check करें.",Toast.LENGTH_LONG).show());
     }
 
     private void testsScreen(){
