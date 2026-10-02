@@ -22,6 +22,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 import com.bumptech.glide.Glide;
 
@@ -53,6 +54,9 @@ public class MainActivity extends Activity {
         TextView b=tv(text,16,Color.WHITE,true); b.setGravity(Gravity.CENTER);
         b.setBackground(bg(Color.rgb(25,118,210),10));
         return b;
+    }
+    private void toast(String message){
+        Toast.makeText(this,message,Toast.LENGTH_LONG).show();
     }
 
     @Override public void onCreate(Bundle b){
@@ -207,7 +211,7 @@ public class MainActivity extends Activity {
         setContentView(root); return root;
     }
 
-    private TextView teacherRoomCard(QueryDocumentSnapshot d){
+    private LinearLayout teacherRoomCard(QueryDocumentSnapshot d){
         String title=d.getString("roomTitle"); if(title==null)title="Live Class Room";
         String schedule=d.getString("schedule"); if(schedule==null)schedule="";
         String url=d.getString("liveUrl"); if(url==null)url="";
