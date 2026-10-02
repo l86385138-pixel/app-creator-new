@@ -8,6 +8,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.GridLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -21,6 +22,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.storage.FirebaseStorage;
+import com.bumptech.glide.Glide;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -150,12 +152,171 @@ public class MainActivity extends Activity {
         TextView t=tv(title,16,Color.rgb(45,45,45),false); t.setGravity(Gravity.CENTER);
         c.addView(t,new LinearLayout.LayoutParams(-1,dp(58)));
         c.setOnClickListener(v -> {
-            if(title.equals("Paid Classes") || title.equals("Free Courses")) coursesScreen();
+            if(title.equals("Paid Classes")) paidClassesScreen();\n            else if(title.equals("Free Courses")) coursesScreen();
             else if(title.equals("Free Weekly Test") || title.equals("Paid Test Series") || title.equals("Daily Quiz")) testsScreen();
             else if(title.equals("Books") || title.equals("PDF Class Notes")) notesScreen();
             else showFeature(title);
         });
         return c;
+    }
+
+    private void paidClassesScreen(){
+        LinearLayout root=baseScreen("Paid Classes");
+        LinearLayout tabs=new LinearLayout(this); tabs.setPadding(dp(10),dp(8),dp(10),dp(8)); tabs.setGravity(Gravity.CENTER_VERTICAL);
+        String[] tabNames={"My Courses","All Courses","RWA Railway Exams"};
+        for(String tabName:tabNames){
+            TextView tab=tv(tabName,15,tabName.equals("My Courses")?Color.WHITE:Color.DKGRAY,true);
+            tab.setGravity(Gravity.CENTER); tab.setBackground(bg(tabName.equals("My Courses")?Color.rgb(25,118,210):Color.WHITE,10));
+            LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,dp(48),1); tp.setMargins(dp(4),0,dp(4),0); tabs.addView(tab,tp);
+            if(tabName.equals("My Courses")) tab.setOnClickListener(v -> loadPaidCourses(root,"my"));
+            if(tabName.equals("All Courses")) tab.setOnClickListener(v -> loadPaidCourses(root,"all"));
+            if(tabName.equals("RWA Railway Exams")) tab.setOnClickListener(v -> loadPaidCourses(root,"railway"));
+        }
+        root.addView(tabs,new LinearLayout.LayoutParams(-1,dp(68)));
+        loadPaidCourses(root,"my");
+        setContentView(root);
+    }
+
+    private void loadPaidCourses(LinearLayout root,String filter){
+        if(root.getChildCount()>2) root.removeViews(2,root.getChildCount()-2);
+        TextView loading=tv("Courses loading...",16,Color.DKGRAY,false); loading.setPadding(dp(18),dp(15),dp(18),dp(15));
+        root.addView(loading,new LinearLayout.LayoutParams(-1,0,1));
+        com.google.firebase.firestore.Query query=db.collection("courses");
+        if(filter.equals("railway")) query=query.whereEqualTo("category","railway");
+        else if(filter.equals("my")){
+            FirebaseUser u=auth.getCurrentUser();
+            if(u!=null) query=query.whereArrayContains("enrolledUsers",u.getUid());
+        }
+        query.get().addOnSuccessListener(result -> {
+            LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(12),dp(8),dp(12),dp(25));
+            if(result.isEmpty()){
+                TextView empty=tv(filter.equals("my")?"My Courses में अभी कोई enrolled course नहीं है.":"अभी कोई paid course उपलब्ध नहीं है.",17,Color.DKGRAY,false);
+                empty.setGravity(Gravity.CENTER); list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
+            } else for(QueryDocumentSnapshot doc:result) list.addView(paidCourseCard(doc));
+            root.removeView(loading); root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+        }).addOnFailureListener(e -> loading.setText("Courses load नहीं हो सके.\n\n"+error(e)));
+    }
+
+    private LinearLayout paidCourseCard(QueryDocumentSnapshot doc){
+        String title=doc.getString("title"); if(title==null) title=doc.getString("name"); if(title==null) title="Course";
+        String description=doc.getString("description"); if(description==null) description="";
+        String imageUrl=doc.getString("imageUrl");
+        String price=doc.getString("price"); if(price==null && doc.get("price")!=null) price=String.valueOf(doc.get("price")); if(price==null) price="";
+        LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(14),dp(10),dp(14),dp(14)); card.setBackground(bg(Color.WHITE,14));
+        LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(390)); cp.setMargins(0,dp(7),0,dp(10)); card.setLayoutParams(cp);
+        ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        card.addView(image,new LinearLayout.LayoutParams(-1,dp(220)));
+        if(imageUrl!=null && !imageUrl.isEmpty()) Glide.with(this).load(imageUrl).into(image);
+        else image.setBackground(bg(Color.rgb(235,235,235),8));
+        TextView t=tv(title,18,Color.rgb(45,45,45),false); t.setPadding(dp(5),dp(12),dp(5),dp(4)); card.addView(t,new LinearLayout.LayoutParams(-1,dp(55)));
+        TextView d=tv(description,14,Color.DKGRAY,false); d.setPadding(dp(5),0,dp(5),0); card.addView(d,new LinearLayout.LayoutParams(-1,dp(45)));
+        TextView view=button("VIEW"); LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(-1,dp(50)); vp.setMargins(dp(5),dp(5),dp(5),0); card.addView(view,vp);
+        view.setOnClickListener(v -> paidCourseDetail(doc.getId(),title));
+        return card;
+    }
+
+    private void paidCourseDetail(String courseId,String title){
+        LinearLayout root=baseScreen(title);
+        LinearLayout tabs=new LinearLayout(this); tabs.setPadding(dp(10),dp(8),dp(10),dp(8));
+        String[] names={"Subjects","Live","Telegram"};
+        for(String n:names){
+            TextView tab=tv(n,16,n.equals("Subjects")?Color.WHITE:Color.DKGRAY,true); tab.setGravity(Gravity.CENTER);
+            tab.setBackground(bg(n.equals("Subjects")?Color.rgb(25,118,210):Color.WHITE,8));
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(48),1); p.setMargins(dp(4),0,dp(4),0); tabs.addView(tab,p);
+            if(n.equals("Subjects")) tab.setOnClickListener(v -> loadSubjects(root,courseId));
+            if(n.equals("Live")) tab.setOnClickListener(v -> loadLive(root,courseId));
+            if(n.equals("Telegram")) tab.setOnClickListener(v -> loadTelegram(root,courseId));
+        }
+        root.addView(tabs,new LinearLayout.LayoutParams(-1,dp(66)));
+        loadSubjects(root,courseId);
+        setContentView(root);
+    }
+
+    private void loadSubjects(LinearLayout root,String courseId){
+        replaceContent(root,"Subjects loading...");
+        db.collection("courses").document(courseId).collection("subjects").get().addOnSuccessListener(result -> {
+            LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(10),dp(5),dp(10),dp(20));
+            if(result.isEmpty()) list.addView(centerMessage("अभी subjects add नहीं किए गए हैं."));
+            else for(QueryDocumentSnapshot doc:result){
+                String title=doc.getString("title"); if(title==null) title=doc.getString("name"); if(title==null) title="Subject";
+                list.addView(subjectRow(courseId,doc.getId(),title,doc.getString("imageUrl")));
+            }
+            replaceContent(root,list);
+        }).addOnFailureListener(e -> replaceContentText(root,"Subjects load नहीं हुए.\n\n"+error(e)));
+    }
+
+    private LinearLayout subjectRow(String courseId,String subjectId,String title,String imageUrl){
+        LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(dp(12),dp(8),dp(12),dp(8)); row.setBackgroundColor(Color.WHITE);
+        ImageView icon=new ImageView(this); icon.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        row.addView(icon,new LinearLayout.LayoutParams(dp(58),dp(58)));
+        if(imageUrl!=null && !imageUrl.isEmpty()) Glide.with(this).load(imageUrl).into(icon); else icon.setBackground(bg(Color.LTGRAY,8));
+        TextView t=tv(title,17,Color.rgb(35,35,35),true); t.setPadding(dp(16),0,dp(8),0); row.addView(t,new LinearLayout.LayoutParams(0,dp(74),1));
+        TextView arrow=tv("›",30,Color.DKGRAY,false); row.addView(arrow,new LinearLayout.LayoutParams(dp(40),dp(74)));
+        row.setOnClickListener(v -> subjectLessons(courseId,subjectId,title));
+        return row;
+    }
+
+    private void subjectLessons(String courseId,String subjectId,String subjectTitle){
+        LinearLayout root=baseScreen(subjectTitle);
+        TextView loading=tv("Lessons loading...",16,Color.DKGRAY,false); loading.setPadding(dp(18),dp(18),dp(18),dp(18)); root.addView(loading,new LinearLayout.LayoutParams(-1,-1)); setContentView(root);
+        db.collection("courses").document(courseId).collection("subjects").document(subjectId).collection("lessons").get().addOnSuccessListener(result -> {
+            LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(12),dp(8),dp(12),dp(20));
+            if(result.isEmpty()) list.addView(centerMessage("अभी lessons उपलब्ध नहीं हैं."));
+            else for(QueryDocumentSnapshot doc:result){
+                String title=doc.getString("title"); if(title==null) title="Lesson";
+                String videoUrl=doc.getString("videoUrl");
+                TextView item=tv("▶  "+title+"\n",17,Color.rgb(35,35,35),true); item.setPadding(dp(15),dp(16),dp(15),dp(16)); item.setBackground(bg(Color.WHITE,10));
+                item.setOnClickListener(v -> openUrl(videoUrl)); list.addView(item,new LinearLayout.LayoutParams(-1,dp(75)));
+            }
+            root.removeView(loading); root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+        }).addOnFailureListener(e -> loading.setText("Lessons load नहीं हुए.\n\n"+error(e)));
+    }
+
+    private void loadLive(LinearLayout root,String courseId){
+        replaceContent(root,"Live classes loading...");
+        db.collection("courses").document(courseId).get().addOnSuccessListener(doc -> {
+            String url=doc.getString("liveUrl");
+            LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setGravity(Gravity.CENTER); box.setPadding(dp(25),dp(25),dp(25),dp(25));
+            box.addView(centerMessage("Live class उपलब्ध होने पर नीचे से open करें."));
+            TextView b=button("OPEN LIVE CLASS"); box.addView(b,new LinearLayout.LayoutParams(-1,dp(54))); b.setOnClickListener(v -> openUrl(url));
+            replaceContent(root,box);
+        });
+    }
+
+    private void loadTelegram(LinearLayout root,String courseId){
+        replaceContent(root,"Telegram loading...");
+        db.collection("courses").document(courseId).get().addOnSuccessListener(doc -> {
+            String url=doc.getString("telegramUrl");
+            LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setGravity(Gravity.CENTER); box.setPadding(dp(25),dp(25),dp(25),dp(25));
+            box.addView(centerMessage("Course का Telegram group/channel नीचे से खोलें."));
+            TextView b=button("OPEN TELEGRAM"); box.addView(b,new LinearLayout.LayoutParams(-1,dp(54))); b.setOnClickListener(v -> openUrl(url));
+            replaceContent(root,box);
+        });
+    }
+
+    private void replaceContent(LinearLayout root,String text){
+        if(root.getChildCount()>2) root.removeViews(2,root.getChildCount()-2);
+        TextView t=tv(text,16,Color.DKGRAY,false); t.setPadding(dp(18),dp(15),dp(18),dp(15)); root.addView(t,new LinearLayout.LayoutParams(-1,0,1));
+    }
+
+    private void replaceContentText(LinearLayout root,String text){
+        if(root.getChildCount()>2) root.removeViews(2,root.getChildCount()-2);
+        TextView t=tv(text,16,Color.DKGRAY,false); t.setPadding(dp(18),dp(15),dp(18),dp(15)); root.addView(t,new LinearLayout.LayoutParams(-1,0,1));
+    }
+
+    private void replaceContent(LinearLayout root,LinearLayout content){
+        if(root.getChildCount()>2) root.removeViews(2,root.getChildCount()-2);
+        root.addView(content,new LinearLayout.LayoutParams(-1,0,1));
+    }
+
+    private TextView centerMessage(String text){
+        TextView t=tv(text,17,Color.DKGRAY,false); t.setGravity(Gravity.CENTER); return t;
+    }
+
+    private void openUrl(String url){
+        if(url==null || url.trim().isEmpty()){ Toast.makeText(this,"Link उपलब्ध नहीं है.",Toast.LENGTH_LONG).show(); return; }
+        try{ startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url))); }
+        catch(Exception e){ Toast.makeText(this,"Link open नहीं हो सका.",Toast.LENGTH_LONG).show(); }
     }
 
     private void coursesScreen(){
