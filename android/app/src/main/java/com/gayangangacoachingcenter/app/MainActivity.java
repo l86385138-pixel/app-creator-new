@@ -1,6 +1,7 @@
 package com.gayangangacoachingcenter.app;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -138,8 +139,18 @@ public class MainActivity extends Activity {
         db.collection("users").document(u.getUid()).get().addOnSuccessListener(doc -> {
             String name=doc.exists()?doc.getString("name"):null;
             if(name==null || name.trim().isEmpty()) name=u.getEmail()==null?"Student":u.getEmail().split("@")[0];
-            setContentView(home(name));
+            if(doc.exists() && "admin".equals(doc.getString("role"))) setContentView(adminHome(name));
+            else setContentView(home(name));
         }).addOnFailureListener(e -> setContentView(home(u.getEmail()==null?"Student":u.getEmail().split("@")[0])));
+    }
+
+    private LinearLayout adminHome(String name){
+        LinearLayout r=new LinearLayout(this);r.setOrientation(LinearLayout.VERTICAL);r.setPadding(dp(22),dp(35),dp(22),dp(25));r.setBackgroundColor(Color.rgb(247,249,252));
+        TextView h=tv("Hello, "+name,24,Color.DKGRAY,true);r.addView(h,new LinearLayout.LayoutParams(-1,dp(60)));
+        TextView a=button("OPEN ADMIN PANEL");r.addView(a,new LinearLayout.LayoutParams(-1,dp(58)));a.setOnClickListener(v->startActivity(new Intent(this,AdminActivity.class)));
+        TextView s=tv("Admin account detected\nYou can manage courses, subjects, videos, PDFs, live classes, Telegram and payment settings.",16,Color.DKGRAY,false);s.setPadding(0,dp(18),0,dp(18));r.addView(s,new LinearLayout.LayoutParams(-1,dp(150)));
+        TextView logout=button("LOGOUT");r.addView(logout,new LinearLayout.LayoutParams(-1,dp(58)));logout.setOnClickListener(v->{auth.signOut();setContentView(authScreen(false));});
+        return r;
     }
 
     private LinearLayout card(String icon,String title){
