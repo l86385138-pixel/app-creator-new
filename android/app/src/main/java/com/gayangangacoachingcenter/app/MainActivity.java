@@ -175,14 +175,14 @@ public class MainActivity extends Activity {
     private void paidClassesScreen(){
         LinearLayout root=baseScreen("Paid Classes");
         LinearLayout tabs=new LinearLayout(this); tabs.setPadding(dp(10),dp(8),dp(10),dp(8)); tabs.setGravity(Gravity.CENTER_VERTICAL);
-        String[] tabNames={"My Courses","All Courses","RWA Railway Exams"};
+        String[] tabNames={"My Courses","All Courses","Railway Exams"};
         for(String tabName:tabNames){
             TextView tab=tv(tabName,15,tabName.equals("My Courses")?Color.WHITE:Color.DKGRAY,true);
             tab.setGravity(Gravity.CENTER); tab.setBackground(bg(tabName.equals("My Courses")?Color.rgb(25,118,210):Color.WHITE,10));
             LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,dp(48),1); tp.setMargins(dp(4),0,dp(4),0); tabs.addView(tab,tp);
             if(tabName.equals("My Courses")) tab.setOnClickListener(v -> loadPaidCourses(root,"my"));
             if(tabName.equals("All Courses")) tab.setOnClickListener(v -> loadPaidCourses(root,"all"));
-            if(tabName.equals("RWA Railway Exams")) tab.setOnClickListener(v -> loadPaidCourses(root,"railway"));
+            if(tabName.equals("Railway Exams")) tab.setOnClickListener(v -> loadPaidCourses(root,"railway"));
         }
         root.addView(tabs,new LinearLayout.LayoutParams(-1,dp(68)));
         loadPaidCourses(root,"my");
@@ -204,12 +204,12 @@ public class MainActivity extends Activity {
             if(result.isEmpty()){
                 TextView empty=tv(filter.equals("my")?"My Courses में अभी कोई enrolled course नहीं है.":"अभी कोई paid course उपलब्ध नहीं है.",17,Color.DKGRAY,false);
                 empty.setGravity(Gravity.CENTER); list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
-            } else for(QueryDocumentSnapshot doc:result) list.addView(paidCourseCard(doc));
+            } else for(QueryDocumentSnapshot doc:result) list.addView(paidCourseCard(doc,filter));
             root.removeView(loading); root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         }).addOnFailureListener(e -> loading.setText("Courses load नहीं हो सके.\n\n"+error(e)));
     }
 
-    private LinearLayout paidCourseCard(QueryDocumentSnapshot doc){
+    private LinearLayout paidCourseCard(QueryDocumentSnapshot doc,String filter){
         String title=doc.getString("title"); if(title==null) title=doc.getString("name"); if(title==null) title="Course";
         String description=doc.getString("description"); if(description==null) description="";
         String imageUrl=doc.getString("imageUrl");
@@ -223,9 +223,27 @@ public class MainActivity extends Activity {
         else image.setBackground(bg(Color.rgb(235,235,235),8));
         TextView t=tv(title,18,Color.rgb(45,45,45),false); t.setPadding(dp(5),dp(12),dp(5),dp(4)); card.addView(t,new LinearLayout.LayoutParams(-1,dp(55)));
         TextView d=tv(description,14,Color.DKGRAY,false); d.setPadding(dp(5),0,dp(5),0); card.addView(d,new LinearLayout.LayoutParams(-1,dp(45)));
-        TextView view=button("VIEW"); LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(-1,dp(50)); vp.setMargins(dp(5),dp(5),dp(5),0); card.addView(view,vp);
-        view.setOnClickListener(v -> paidCourseDetail(doc.getId(),courseTitle));
+        TextView view=button(filter.equals("my")?"VIEW":"BUY / PAYMENT"); LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(-1,dp(50)); vp.setMargins(dp(5),dp(5),dp(5),0); card.addView(view,vp);
+        if(filter.equals("my")) view.setOnClickListener(v -> paidCourseDetail(doc.getId(),courseTitle));
+        else view.setOnClickListener(v -> paymentScreen(doc));
         return card;
+    }
+
+    private void paymentScreen(QueryDocumentSnapshot doc){
+        String title=doc.getString("title"); if(title==null) title="Paid Course";
+        String price=doc.getString("price"); if(price==null) price="";
+        String url=doc.getString("paymentUrl");
+        LinearLayout root=baseScreen("Course Payment");
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setGravity(Gravity.CENTER);box.setPadding(dp(24),dp(25),dp(24),dp(25));
+        box.addView(centerMessage(title+"\n\nPrice: ₹ "+price+"\n\nPayment gateway खोलकर payment complete करें."));
+        TextView pay=button("OPEN PAYMENT GATEWAY");box.addView(pay,new LinearLayout.LayoutParams(-1,dp(56)));pay.setOnClickListener(v->openUrl(url));
+        TextView paid=button("I HAVE COMPLETED PAYMENT");LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(56));pp.topMargin=dp(12);box.addView(paid,pp);
+        paid.setOnClickListener(v->{
+            FirebaseUser u=auth.getCurrentUser(); if(u==null)return;
+            Map<String,Object> m=new HashMap<>();m.put("userId",u.getUid());m.put("userEmail",u.getEmail());m.put("courseId",doc.getId());m.put("courseTitle",title);m.put("status","pending");m.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
+            db.collection("paymentRequests").add(m).addOnSuccessListener(x->Toast.makeText(this,"Payment verification request भेज दिया गया है.",Toast.LENGTH_LONG).show()).addOnFailureListener(e->Toast.makeText(this,"Request save नहीं हुआ: "+error(e),Toast.LENGTH_LONG).show());
+        });
+        root.addView(box,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
     }
 
     private void paidCourseDetail(String courseId,String title){
