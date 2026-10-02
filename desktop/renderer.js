@@ -1,10 +1,18 @@
 const { initializeApp } = require("firebase/app");
 const { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } = require("firebase/auth");
-const { getFirestore, collection, getDocs, doc, getDoc } = require("firebase/firestore");
+const { getFirestore, collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, onSnapshot, query, where } = require("firebase/firestore");
+const { getStorage, ref: storageRef, uploadBytes, getDownloadURL } = require("firebase/storage");
 const cfg = require("./firebase-config");
 
 let auth = null;
 let db = null;
+let storage = null;
+let currentRole = "student";
+let livePC = new Map();
+let liveStream = null;
+let liveRecorder = null;
+let liveChunks = [];
+let currentLiveRoom = null;
 const root = document.getElementById("app");
 let cachedCourses = [];
 
@@ -25,6 +33,107 @@ function login(){
     try{msg.textContent="Please wait...";await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("pass").value);}
     catch(e){msg.textContent=e.message||"Login failed";}
   };
+}
+
+async function loadAdminNotice(){
+  shell('<div class="empty-page"><h2>Admin Account</h2><p class="muted">Admin Panel Android app में उपलब्ध है।</p><button class="primary-btn" onclick="signOut(auth)">LOGOUT</button></div>','Admin');
+}
+async function loadTeacherDashboard(){
+  shell('<section class="hero-title"><h1>Teacher Dashboard</h1><p>Assigned live classrooms</p></section><div id="teacherRooms" class="course-grid">Loading...</div>','Live');
+  const el=document.getElementById("teacherRooms");
+  try{
+    const q=query(collection(db,"liveRooms"),where("teacherEmail","==",auth.currentUser.email));
+    const s=await getDocs(q); let h="";
+    s.forEach(d=>{
+      const x=d.data();
+      h+='<article class="course-card"><div class="course-placeholder">🔴</div><div class="course-body"><span class="tag">ASSIGNED</span><h3>'+esc(x.roomTitle||"Live Class")+'</h3><p>'+esc(x.schedule||"")+'</p><button class="primary-btn live-start" data-room="'+d.id+'">START LIVE CLASS</button></div></article>';
+    });
+    el.innerHTML=h||'<div class="empty-card">Admin ने अभी live class assign नहीं की है।</div>';
+    el.querySelectorAll(".live-start").forEach(b=>b.onclick=()=>openTeacherLive(b.dataset.room));
+  }catch(e){el.innerHTML='<div class="error">'+esc(e.message)+'</div>';}
+}
+async function openTeacherLive(roomId){
+  const s=await getDoc(doc(db,"liveRooms",roomId)); if(!s.exists()){alert("Live room नहीं मिला");return;}
+  const x=s.data(); const pw=prompt("Class Room Password"); if(pw===null)return;
+  if(pw!==String(x.roomPassword||"")){alert("Wrong class room password");return;}
+  currentLiveRoom=roomId;
+  shell('<section class="hero-title"><h1>🔴 '+esc(x.roomTitle||"Live Class")+'</h1><p>'+esc(x.schedule||"")+'</p></section><div class="live-layout"><div class="live-main"><video id="localVideo" autoplay muted playsinline></video><div class="live-controls"><button id="startBtn" class="primary-btn">START LIVE</button><button id="endBtn" class="danger-btn" disabled>END LIVE</button></div><div id="liveMsg" class="muted">Camera और microphone allow करें।</div></div><div class="live-side"><h3>Students</h3><div id="count">0 connected</div></div></div>','Live');
+  document.getElementById("startBtn").onclick=startTeacherLive;
+  document.getElementById("endBtn").onclick=stopTeacherLive;
+  try{
+    liveStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    document.getElementById("localVideo").srcObject=liveStream;
+  }catch(e){document.getElementById("liveMsg").textContent=e.message;}
+}
+async function startTeacherLive(){
+  if(!liveStream||!currentLiveRoom)return;
+  await updateDoc(doc(db,"liveRooms",currentLiveRoom),{liveActive:true,status:"live",startedAt:new Date()});
+  document.getElementById("startBtn").disabled=true; document.getElementById("endBtn").disabled=false;
+  liveChunks=[];
+  try{liveRecorder=new MediaRecorder(liveStream,{mimeType:"video/webm;codecs=vp8,opus"});}catch(e){liveRecorder=new MediaRecorder(liveStream);}
+  liveRecorder.ondataavailable=e=>{if(e.data.size)liveChunks.push(e.data);}; liveRecorder.start(1000);
+  listenStudents();
+}
+function listenStudents(){
+  const q=query(collection(db,"liveRooms",currentLiveRoom,"participants"),where("status","==","joining"));
+  onSnapshot(q,s=>s.docChanges().forEach(ch=>{if(ch.type==="added")acceptStudent(ch.doc.id,ch.doc.data());}));
+}
+async function acceptStudent(pid,data){
+  if(livePC.has(pid))return;
+  const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+  livePC.set(pid,pc); liveStream.getTracks().forEach(t=>pc.addTrack(t,liveStream));
+  pc.onicecandidate=e=>{if(e.candidate)addDoc(collection(db,"liveRooms",currentLiveRoom,"participants",pid,"teacherCandidates"),e.candidate.toJSON());};
+  await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+  const ans=await pc.createAnswer(); await pc.setLocalDescription(ans);
+  await updateDoc(doc(db,"liveRooms",currentLiveRoom,"participants",pid),{answer:{type:ans.type,sdp:ans.sdp},status:"connected"});
+  onSnapshot(collection(db,"liveRooms",currentLiveRoom,"participants",pid,"studentCandidates"),s=>s.docChanges().forEach(ch=>{if(ch.type==="added")pc.addIceCandidate(new RTCIceCandidate(ch.doc.data())).catch(()=>{});}));
+  const n=document.getElementById("count");if(n)n.textContent=livePC.size+" connected";
+}
+async function stopTeacherLive(){
+  if(liveRecorder&&liveRecorder.state!=="inactive")liveRecorder.stop();
+  livePC.forEach(pc=>pc.close());livePC.clear();
+  if(liveStream)liveStream.getTracks().forEach(t=>t.stop());
+  if(currentLiveRoom)await updateDoc(doc(db,"liveRooms",currentLiveRoom),{liveActive:false,status:"ended",endedAt:new Date()});
+  document.getElementById("endBtn").disabled=true;
+  document.getElementById("liveMsg").textContent="Live ended. Recording save हो रही है...";
+  setTimeout(saveLiveRecording,1200);
+}
+async function saveLiveRecording(){
+  if(!liveChunks.length){document.getElementById("liveMsg").textContent="Recording data नहीं मिला।";return;}
+  const blob=new Blob(liveChunks,{type:"video/webm"}); const stamp=Date.now();
+  try{
+    const path="live_recordings/"+auth.currentUser.uid+"/"+currentLiveRoom+"-"+stamp+".webm";
+    const fr=storageRef(storage,path); await uploadBytes(fr,blob,{contentType:"video/webm"});
+    const url=await getDownloadURL(fr);
+    await addDoc(collection(db,"recordings"),{roomId:currentLiveRoom,teacherUid:auth.currentUser.uid,title:"Live Class "+stamp,url,filePath:path,status:"ready",createdAt:new Date()});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Gayan-Ganga-Live-"+stamp+".webm";a.click();
+    document.getElementById("liveMsg").innerHTML="Recording saved + downloaded. <a href='"+url+"' target='_blank'>Open recording</a>";
+  }catch(e){document.getElementById("liveMsg").textContent="Recording save failed: "+e.message;}
+}
+async function loadLiveList(){
+  const el=document.getElementById("liveList"); if(!el)return;
+  try{
+    const s=await getDocs(query(collection(db,"liveRooms"),where("liveActive","==",true))); let h="";
+    s.forEach(d=>{const x=d.data();h+='<article class="course-card"><div class="course-placeholder">🔴</div><div class="course-body"><span class="tag">LIVE NOW</span><h3>'+esc(x.roomTitle||"Live Class")+'</h3><p>'+esc(x.schedule||"")+'</p><button class="primary-btn join-live" data-room="'+d.id+'">JOIN LIVE CLASS</button></div></article>';});
+    el.innerHTML=h||'<div class="empty-card">अभी कोई live class नहीं चल रही है।</div>';
+    el.querySelectorAll(".join-live").forEach(b=>b.onclick=()=>joinStudentLive(b.dataset.room));
+  }catch(e){el.innerHTML='<div class="error">'+esc(e.message)+'</div>';}
+}
+async function joinStudentLive(roomId){
+  const s=await getDoc(doc(db,"liveRooms",roomId));if(!s.exists()||!s.data().liveActive){alert("Live class अभी active नहीं है");return;}
+  const x=s.data();
+  shell('<section class="hero-title"><h1>🔴 '+esc(x.roomTitle||"Live Class")+'</h1><p>'+esc(x.schedule||"")+'</p></section><div class="student-live"><video id="remoteVideo" autoplay playsinline controls></video><div id="studentMsg" class="muted">Teacher से connect हो रहा है...</div><button id="leaveBtn" class="danger-btn">LEAVE CLASS</button></div>','Live');
+  document.getElementById("leaveBtn").onclick=()=>{livePC.get("student")?.close();livePC.delete("student");loadHome();};
+  currentLiveRoom=roomId;
+  const p=await addDoc(collection(db,"liveRooms",roomId,"participants"),{uid:auth.currentUser.uid,email:auth.currentUser.email,status:"joining",joinedAt:new Date()});
+  const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});livePC.set("student",pc);
+  pc.addTransceiver("video",{direction:"recvonly"});pc.addTransceiver("audio",{direction:"recvonly"});
+  pc.ontrack=e=>{document.getElementById("remoteVideo").srcObject=e.streams[0];document.getElementById("studentMsg").textContent="LIVE — Teacher connected.";};
+  pc.onicecandidate=e=>{if(e.candidate)addDoc(collection(db,"liveRooms",roomId,"participants",p.id,"studentCandidates"),e.candidate.toJSON());};
+  onSnapshot(doc(db,"liveRooms",roomId,"participants",p.id),async d=>{const a=d.data()?.answer;if(a&&!pc.currentRemoteDescription)await pc.setRemoteDescription(new RTCSessionDescription(a));});
+  onSnapshot(collection(db,"liveRooms",roomId,"participants",p.id,"teacherCandidates"),s=>s.docChanges().forEach(ch=>{if(ch.type==="added")pc.addIceCandidate(new RTCIceCandidate(ch.doc.data())).catch(()=>{});}));
+  const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+  await updateDoc(doc(db,"liveRooms",roomId,"participants",p.id),{offer:{type:offer.type,sdp:offer.sdp}});
 }
 
 function shell(content,active="Home"){
@@ -54,7 +163,8 @@ function showMore(){shell('<div class="empty-page"><h2>More</h2><div class="more
 function showProfile(){shell('<div class="empty-page"><div class="profile-large">L</div><h2>Student Profile</h2><p class="muted">'+esc(auth.currentUser?.email||"")+'</p><button class="primary-btn" onclick="signOut(auth)">LOGOUT</button></div>');}
 function toggleTheme(){document.body.classList.toggle("dark");}
 function showLive(){
-  shell('<section class="hero-title"><h1>Live Classes</h1><p>Current live classes from your courses</p></section><div id="liveList" class="course-grid">Loading...</div>','Live');
+  if(currentRole==="teacher"){loadTeacherDashboard();return;}
+  shell('<section class="hero-title"><h1>Live Classes</h1><p>Current live classes from your coaching center</p></section><div id="liveList" class="course-grid">Loading...</div>','Live');
   loadLiveList();
 }
 async function loadLiveList(){
@@ -98,7 +208,15 @@ function boot(){
     const firebaseApp = initializeApp(cfg);
     auth = getAuth(firebaseApp);
     db = getFirestore(firebaseApp);
-    onAuthStateChanged(auth,u=>u?loadHome():login());
+    storage = getStorage(firebaseApp);
+    onAuthStateChanged(auth,async u=>{
+      if(!u){currentRole="student";login();return;}
+      const udoc=await getDoc(doc(db,"users",u.uid));
+      currentRole=udoc.exists()&&udoc.data().role||"student";
+      if(currentRole==="teacher") loadTeacherDashboard();
+      else if(currentRole==="admin") loadAdminNotice();
+      else loadHome();
+    });
   }catch(e){
     showStartupError(e);
   }
