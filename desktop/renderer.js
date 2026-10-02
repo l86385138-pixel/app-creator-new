@@ -74,7 +74,7 @@ async function loadHome(){
     const snap=await getDocs(collection(db,"courses"));cachedCourses=[];
     snap.forEach(d=>{const x=d.data();cachedCourses.push({id:d.id,x});});
     renderCourses(cachedCourses.filter(a=>isFree(a.x)),"featured");
-    const ts=await getDocs(collection(db,"tests"));let h="";let n=0;ts.forEach(d=>{if(n++<4){const x=d.data();h+='<article class="mini-card"><span>📝</span><div><h3>'+esc(x.title||"Free Test")+'</h3><p>'+esc(x.description||"")+'</p></div><button class="outline-btn" onclick="openTest(\\''+d.id+'\\')">START</button></article>';}});document.getElementById("testPreview").innerHTML=h||'<div class="empty-card">अभी कोई test उपलब्ध नहीं है।</div>';
+    const ts=await getDocs(collection(db,"tests"));let h="";let n=0;ts.forEach(d=>{if(n++<4){const x=d.data();h+='<article class="mini-card"><span>📝</span><div><h3>'+esc(x.title||"Free Test")+'</h3><p>'+esc(x.description||"")+'</p></div><button class="outline-btn" onclick="openTest(\''+d.id+'\')">START</button></article>';}});document.getElementById("testPreview").innerHTML=h||'<div class="empty-card">अभी कोई test उपलब्ध नहीं है।</div>';
   }catch(e){document.getElementById("featured").innerHTML='<div class="error">'+esc(e.message)+'</div>';}
 }
 function renderCourses(items,target){const el=document.getElementById(target);if(!el)return;el.innerHTML=items.length?items.map(a=>courseCard(a.id,a.x)).join(""):'<div class="empty-card">अभी कोई free course उपलब्ध नहीं है।</div>';}
