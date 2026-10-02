@@ -156,7 +156,7 @@ public class MainActivity extends Activity {
             db.collection("teacherInvites").whereEqualTo("email",em).limit(1).get()
               .addOnSuccessListener(res->{
                 if(res.isEmpty()){activate.setEnabled(true);activate.setText("ACTIVATE TEACHER ACCOUNT");toast("इस email के लिए Admin Invite नहीं मिला");return;}
-                QueryDocumentSnapshot inv=res.getDocuments().get(0);
+                DocumentSnapshot inv=res.getDocuments().get(0);
                 Boolean active=inv.getBoolean("active");
                 if(Boolean.FALSE.equals(active)){activate.setEnabled(true);activate.setText("ACTIVATE TEACHER ACCOUNT");toast("Teacher invite inactive है");return;}
                 auth.createUserWithEmailAndPassword(em,pw).addOnCompleteListener(task->{
