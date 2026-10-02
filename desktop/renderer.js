@@ -27,16 +27,20 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function isFree(x){return x.access==="free" || x.price==="0" || x.price===0 || !x.price;}
 
 function login(){
-  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">GG</div><h1>Gayan Ganga</h1><p>Student Login</p><input id="email" class="input" placeholder="Email"><input id="pass" type="password" class="input" placeholder="Password"><div id="msg" class="error"></div><button id="login" class="primary-btn">LOGIN</button></div></div>';
+  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">GG</div><h1>Gayan Ganga</h1><p>Admin / Teacher Login</p><div class="muted" style="margin-bottom:14px">Windows app is only for Admin and Teacher.</div><input id="email" class="input" placeholder="Admin / Teacher Email"><input id="pass" type="password" class="input" placeholder="Password"><div id="msg" class="error"></div><button id="login" class="primary-btn">LOGIN</button></div></div>';
   document.getElementById("login").onclick=async()=>{
     const msg=document.getElementById("msg");
-    try{msg.textContent="Please wait...";await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("pass").value);}
-    catch(e){msg.textContent=e.message||"Login failed";}
+    try{
+      msg.textContent="Please wait...";
+      await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("pass").value);
+    }catch(e){
+      msg.textContent=e.message||"Login failed";
+    }
   };
 }
 
 async function loadAdminNotice(){
-  shell('<div class="empty-page"><h2>Admin Account</h2><p class="muted">Admin Panel Android app में उपलब्ध है।</p><button class="primary-btn" onclick="signOut(auth)">LOGOUT</button></div>','Admin');
+  shell('<div class="empty-page"><div class="big-icon">⚙</div><h2>Admin Panel</h2><p class="muted">Admin login is available in the Windows app.</p><p class="muted">Student accounts are not allowed here.</p><button class="primary-btn" onclick="signOut(auth)">LOGOUT</button></div>','Admin');
 }
 async function loadTeacherDashboard(){
   shell('<section class="hero-title"><h1>Teacher Dashboard</h1><p>Assigned live classrooms</p></section><div id="teacherRooms" class="course-grid">Loading...</div>','Live');
@@ -210,12 +214,20 @@ function boot(){
     db = getFirestore(firebaseApp);
     storage = getStorage(firebaseApp);
     onAuthStateChanged(auth,async u=>{
-      if(!u){currentRole="student";login();return;}
+      if(!u){currentRole="";login();return;}
       const udoc=await getDoc(doc(db,"users",u.uid));
-      currentRole=udoc.exists()&&udoc.data().role||"student";
-      if(currentRole==="teacher") loadTeacherDashboard();
-      else if(currentRole==="admin") loadAdminNotice();
-      else loadHome();
+      currentRole=udoc.exists()&&udoc.data().role||"";
+      if(currentRole==="teacher"){
+        loadTeacherDashboard();
+      }else if(currentRole==="admin"){
+        loadAdminNotice();
+      }else{
+        await signOut(auth);
+        currentRole="";
+        login();
+        const msg=document.getElementById("msg");
+        if(msg) msg.textContent="Student account Windows app में allowed नहीं है. Student के लिए Android app इस्तेमाल करें.";
+      }
     });
   }catch(e){
     showStartupError(e);
