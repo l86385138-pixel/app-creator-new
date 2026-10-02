@@ -335,7 +335,7 @@ public class MainActivity extends Activity {
         LinearLayout root=baseScreen("Course Payment");
         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setGravity(Gravity.CENTER);box.setPadding(dp(24),dp(25),dp(24),dp(25));
         box.addView(centerMessage(title+"\n\nPrice: ₹ "+price+"\n\nPayment gateway खोलकर payment complete करें."));
-        TextView pay=button("OPEN PAYMENT GATEWAY");box.addView(pay,new LinearLayout.LayoutParams(-1,dp(56)));pay.setOnClickListener(v->openUrl(liveUrl));
+        TextView pay=button("OPEN PAYMENT GATEWAY");box.addView(pay,new LinearLayout.LayoutParams(-1,dp(56)));pay.setOnClickListener(v->openUrl(url));
         TextView paid=button("I HAVE COMPLETED PAYMENT");LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(56));pp.topMargin=dp(12);box.addView(paid,pp);
         paid.setOnClickListener(v->{
             FirebaseUser u=auth.getCurrentUser(); if(u==null)return;
@@ -408,7 +408,7 @@ public class MainActivity extends Activity {
             String url=doc.getString("liveUrl");
             LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setGravity(Gravity.CENTER); box.setPadding(dp(25),dp(25),dp(25),dp(25));
             box.addView(centerMessage("Live class उपलब्ध होने पर नीचे से open करें."));
-            TextView b=button("OPEN LIVE CLASS"); box.addView(b,new LinearLayout.LayoutParams(-1,dp(54))); b.setOnClickListener(v -> openUrl(liveUrl));
+            TextView b=button("OPEN LIVE CLASS"); box.addView(b,new LinearLayout.LayoutParams(-1,dp(54))); b.setOnClickListener(v -> openUrl(url));
             replaceContent(root,box);
         });
     }
@@ -419,7 +419,7 @@ public class MainActivity extends Activity {
             String url=doc.getString("telegramUrl");
             LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setGravity(Gravity.CENTER); box.setPadding(dp(25),dp(25),dp(25),dp(25));
             box.addView(centerMessage("Course का Telegram group/channel नीचे से खोलें."));
-            TextView b=button("OPEN TELEGRAM"); box.addView(b,new LinearLayout.LayoutParams(-1,dp(54))); b.setOnClickListener(v -> openUrl(liveUrl));
+            TextView b=button("OPEN TELEGRAM"); box.addView(b,new LinearLayout.LayoutParams(-1,dp(54))); b.setOnClickListener(v -> openUrl(url));
             replaceContent(root,box);
         });
     }
@@ -554,7 +554,7 @@ public class MainActivity extends Activity {
                 box.addView(centerMessage("🔴 "+(title==null?"Live Class":title)+"\\n\\n"+(schedule==null?"":schedule)));
                 TextView b=button("JOIN LIVE CLASS");
                 box.addView(b,new LinearLayout.LayoutParams(-1,dp(54)));
-                b.setOnClickListener(v -> openUrl(liveUrl));
+                b.setOnClickListener(v -> openUrl(url));
             } else {
                 box.addView(centerMessage("अभी कोई live class चल नहीं रही है."));
             }
