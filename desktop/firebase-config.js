@@ -1,11 +1,10 @@
-// Firebase Console → Project settings → Your apps → Web app
-// Paste the WEB app configuration here.
-// Do NOT paste the Android google-services.json into this file.
+// Firebase Web configuration for Gayan Ganga Student Desktop
 module.exports = {
-  apiKey: "PASTE_WEB_API_KEY",
-  authDomain: "PASTE_PROJECT.firebaseapp.com",
+  apiKey: "AIzaSyBOzjux1dt0VOSWwKmjdQIDjF-GS-8RTC8",
+  authDomain: "gayan-ganga-app.firebaseapp.com",
   projectId: "gayan-ganga-app",
   storageBucket: "gayan-ganga-app.firebasestorage.app",
   messagingSenderId: "981161594143",
-  appId: "PASTE_WEB_APP_ID"
+  appId: "1:981161594143:web:43adfda36df680165f342a",
+  measurementId: "G-EP5YNB2RWW"
 };
