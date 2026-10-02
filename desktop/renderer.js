@@ -22,7 +22,26 @@ function login(){
 }
 
 function shell(content,active="Home"){
-  root.innerHTML='<header class="navbar"><div class="nav-left"><div class="brand-mark">GG</div><button class="nav-link '+(active==="Home"?"active":"")+'" onclick="loadHome()">Home</button><button class="nav-link" onclick="showMessage('Paid Classes')">Paid Classes</button><button class="nav-link" onclick="showMessage('Purchases')">Purchases</button><button class="nav-link" onclick="showLive()">Live</button><button class="nav-link" onclick="showMore()">More ▾</button></div><div class="nav-center"><div class="search"><span>⌕</span><input id="searchInput" placeholder="Search" oninput="filterCourses(this.value)"></div></div><div class="nav-right"><button class="icon-btn" onclick="toggleTheme()">☾</button><button class="profile" onclick="showProfile()">L</button></div></header><main class="page">'+content+'</main>';
+  root.innerHTML = `
+    <header class="navbar">
+      <div class="nav-left">
+        <div class="brand-mark">GG</div>
+        <button class="nav-link ${active==="Home"?"active":""}" onclick="loadHome()">Home</button>
+        <button class="nav-link" onclick="showMessage('Paid Classes')">Paid Classes</button>
+        <button class="nav-link" onclick="showMessage('Purchases')">Purchases</button>
+        <button class="nav-link" onclick="showLive()">Live</button>
+        <button class="nav-link" onclick="showMore()">More ▾</button>
+      </div>
+      <div class="nav-center">
+        <div class="search"><span>⌕</span><input id="searchInput" placeholder="Search" oninput="filterCourses(this.value)"></div>
+      </div>
+      <div class="nav-right">
+        <button class="icon-btn" onclick="toggleTheme()">☾</button>
+        <button class="profile" onclick="showProfile()">L</button>
+      </div>
+    </header>
+    <main class="page">${content}</main>
+  `;
 }
 function showMessage(title){shell('<div class="empty-page"><div class="big-icon">▣</div><h2>'+esc(title)+'</h2><p class="muted">यह section अभी Free system के लिए तैयार किया जा रहा है।</p><button class="primary-btn" onclick="loadHome()">BACK HOME</button></div>',title);}
 function showMore(){shell('<div class="empty-page"><h2>More</h2><div class="more-grid"><button onclick="loadTests()" class="browse-card">Free Tests</button><button onclick="loadNotes()" class="browse-card">PDF / Notes</button><button onclick="showProfile()" class="browse-card">My Profile</button><button onclick="signOut(auth)" class="browse-card">Logout</button></div></div>','More');}
