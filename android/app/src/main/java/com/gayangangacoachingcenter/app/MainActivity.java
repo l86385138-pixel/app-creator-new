@@ -231,6 +231,7 @@ public class MainActivity extends Activity {
 
     private void paymentScreen(QueryDocumentSnapshot doc){
         String title=doc.getString("title"); if(title==null) title="Paid Course";
+        final String paymentCourseTitle=title;
         String price=doc.getString("price"); if(price==null) price="";
         String url=doc.getString("paymentUrl");
         LinearLayout root=baseScreen("Course Payment");
@@ -240,7 +241,7 @@ public class MainActivity extends Activity {
         TextView paid=button("I HAVE COMPLETED PAYMENT");LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,dp(56));pp.topMargin=dp(12);box.addView(paid,pp);
         paid.setOnClickListener(v->{
             FirebaseUser u=auth.getCurrentUser(); if(u==null)return;
-            Map<String,Object> m=new HashMap<>();m.put("userId",u.getUid());m.put("userEmail",u.getEmail());m.put("courseId",doc.getId());m.put("courseTitle",title);m.put("status","pending");m.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
+            Map<String,Object> m=new HashMap<>();m.put("userId",u.getUid());m.put("userEmail",u.getEmail());m.put("courseId",doc.getId());m.put("courseTitle",paymentCourseTitle);m.put("status","pending");m.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
             db.collection("paymentRequests").add(m).addOnSuccessListener(x->Toast.makeText(this,"Payment verification request भेज दिया गया है.",Toast.LENGTH_LONG).show()).addOnFailureListener(e->Toast.makeText(this,"Request save नहीं हुआ: "+error(e),Toast.LENGTH_LONG).show());
         });
         root.addView(box,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
