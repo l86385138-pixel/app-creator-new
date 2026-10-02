@@ -3,11 +3,17 @@ const { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } = req
 const { getFirestore, collection, getDocs, doc, getDoc } = require("firebase/firestore");
 const cfg = require("./firebase-config");
 
-const app = initializeApp(cfg);
-const auth = getAuth(app);
-const db = getFirestore(app);
+let auth = null;
+let db = null;
 const root = document.getElementById("app");
 let cachedCourses = [];
+
+function showStartupError(err){
+  const msg = err && (err.message || String(err));
+  root.innerHTML = '<div class="login-page"><div class="login-card"><div class="login-logo">GG</div><h1>Gayan Ganga</h1><p>Student Login</p><div class="error">App startup error</div><div class="error" style="word-break:break-word">'+esc(msg)+'</div><button class="primary-btn" onclick="location.reload()">RETRY</button></div></div>';
+}
+window.addEventListener("error", e => showStartupError(e.error || e.message));
+window.addEventListener("unhandledrejection", e => showStartupError(e.reason));
 
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function isFree(x){return x.access==="free" || x.price==="0" || x.price===0 || !x.price;}
@@ -86,4 +92,15 @@ async function loadTests(){shell('<div class="inner-head"><button class="back-bt
 async function loadNotes(){shell('<div class="inner-head"><button class="back-btn" onclick="loadHome()">←</button><div><h1>PDF / Notes</h1><p>Study material</p></div></div><div id="allNotes" class="course-grid">Loading...</div>');const el=document.getElementById("allNotes");const snap=await getDocs(collection(db,"notes"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>📄</span><div><h3>'+esc(x.title||"Notes")+'</h3><p>'+esc(x.description||"")+'</p></div>'+(x.downloadUrl?'<a class="outline-btn" href="'+esc(x.downloadUrl)+'" target="_blank">OPEN PDF</a>':"")+'</article>';});el.innerHTML=h||'<div class="empty-card">अभी notes उपलब्ध नहीं हैं।</div>';}
 async function openTest(testId){const qSnap=await getDocs(collection(db,"tests",testId,"questions"));let qs=[];qSnap.forEach(d=>qs.push(d.data()));let i=0,score=0;function render(){if(i>=qs.length){shell('<div class="result-card"><div class="result-icon">✓</div><h1>Test Completed</h1><h2>'+score+' / '+qs.length+'</h2><p>Your test has been completed.</p><button class="primary-btn" onclick="loadHome()">BACK HOME</button></div>');return;}const q=qs[i];shell('<div class="test-screen"><div class="test-top"><button class="back-btn" onclick="loadHome()">←</button><span>Question '+(i+1)+' of '+qs.length+'</span></div><div class="question-card"><h2>'+esc(q.question)+'</h2><label><input type="radio" name="a" value="1"> '+esc(q.option1)+'</label><label><input type="radio" name="a" value="2"> '+esc(q.option2)+'</label><label><input type="radio" name="a" value="3"> '+esc(q.option3)+'</label><label><input type="radio" name="a" value="4"> '+esc(q.option4)+'</label><button id="next" class="primary-btn">'+(i===qs.length-1?"SUBMIT":"NEXT")+'</button></div></div>');document.getElementById("next").onclick=()=>{const a=document.querySelector('input[name="a"]:checked');if(!a)return;if(a.value===String(q.answer||q.correctAnswer))score++;i++;render();};}render();}
 window.loadHome=loadHome;window.openCourse=openCourse;window.openSubject=openSubject;window.openTest=openTest;window.loadTests=loadTests;window.loadNotes=loadNotes;window.showLive=showLive;window.showProfile=showProfile;window.showMore=showMore;window.showMessage=showMessage;window.toggleTheme=toggleTheme;window.filterCourses=filterCourses;window.filterBrowse=filterBrowse;window.loadCourseLive=loadCourseLive;window.loadCourseNotes=loadCourseNotes;window.loadSubjects=loadSubjects;
-onAuthStateChanged(auth,u=>u?loadHome():login());
+function boot(){
+  try{
+    login();
+    const firebaseApp = initializeApp(cfg);
+    auth = getAuth(firebaseApp);
+    db = getFirestore(firebaseApp);
+    onAuthStateChanged(auth,u=>u?loadHome():login());
+  }catch(e){
+    showStartupError(e);
+  }
+}
+boot();
