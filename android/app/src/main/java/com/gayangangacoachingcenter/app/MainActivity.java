@@ -129,6 +129,99 @@ public class MainActivity extends Activity {
         return root;
     }
 
+    private View teacherActivateScreen(){
+        LinearLayout root=new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(dp(24),dp(36),dp(24),dp(24));
+        root.setBackgroundColor(Color.rgb(247,249,252));
+        TextView title=tv("TEACHER ACCOUNT ACTIVATION",24,Color.rgb(25,118,210),true);
+        title.setGravity(Gravity.CENTER); root.addView(title,new LinearLayout.LayoutParams(-1,dp(60)));
+        TextView info=tv("Admin ने आपका Teacher Invite बनाया है. उसी email से account activate करें.",15,Color.DKGRAY,false);
+        info.setGravity(Gravity.CENTER); root.addView(info,new LinearLayout.LayoutParams(-1,dp(65)));
+        EditText name=input("Teacher Name");
+        EditText email=input("Teacher Email");
+        EditText pass=input("Create Login Password (6+)");
+        pass.setInputType(0x00000081);
+        addAuthField(root,name,56,12); addAuthField(root,email,56,12); addAuthField(root,pass,56,12);
+        TextView activate=button("ACTIVATE TEACHER ACCOUNT");
+        addAuthField(root,activate,54,18);
+        TextView back=tv("← Back to Login",15,Color.rgb(25,118,210),true);
+        back.setGravity(Gravity.CENTER); root.addView(back,new LinearLayout.LayoutParams(-1,dp(50)));
+        back.setOnClickListener(v->setContentView(authScreen(false)));
+        activate.setOnClickListener(v->{
+            String n=name.getText().toString().trim(), em=email.getText().toString().trim(), pw=pass.getText().toString();
+            if(n.isEmpty()||em.isEmpty()||pw.length()<6){toast("Name, email और 6+ character password भरें");return;}
+            activate.setText("CHECKING INVITE..."); activate.setEnabled(false);
+            db.collection("teacherInvites").whereEqualTo("email",em).limit(1).get()
+              .addOnSuccessListener(res->{
+                if(res.isEmpty()){activate.setEnabled(true);activate.setText("ACTIVATE TEACHER ACCOUNT");toast("इस email के लिए Admin Invite नहीं मिला");return;}
+                QueryDocumentSnapshot inv=res.getDocuments().get(0);
+                Boolean active=inv.getBoolean("active");
+                if(Boolean.FALSE.equals(active)){activate.setEnabled(true);activate.setText("ACTIVATE TEACHER ACCOUNT");toast("Teacher invite inactive है");return;}
+                auth.createUserWithEmailAndPassword(em,pw).addOnCompleteListener(task->{
+                    if(task.isSuccessful()){
+                        FirebaseUser u=auth.getCurrentUser();
+                        Map<String,Object> p=new HashMap<>();
+                        p.put("name",n); p.put("email",em); p.put("role","teacher");
+                        p.put("inviteId",inv.getId()); p.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
+                        db.collection("users").document(u.getUid()).set(p).addOnSuccessListener(x->{
+                            Map<String,Object> up=new HashMap<>();
+                            up.put("teacherUid",u.getUid()); up.put("activatedAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
+                            inv.getReference().set(up,com.google.firebase.firestore.SetOptions.merge()).addOnSuccessListener(y->loadHome());
+                        });
+                    }else{
+                        activate.setEnabled(true);activate.setText("ACTIVATE TEACHER ACCOUNT");
+                        toast("Teacher account create failed: "+error(task.getException()));
+                    }
+                });
+              }).addOnFailureListener(e->{activate.setEnabled(true);activate.setText("ACTIVATE TEACHER ACCOUNT");toast("Invite check failed: "+error(e));});
+        });
+        return root;
+    }
+
+    private void addAuthField(LinearLayout root,View v,int h,int top){
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(h));
+        p.topMargin=dp(top); root.addView(v,p);
+    }
+
+    private LinearLayout teacherHome(String name){
+        LinearLayout root=baseScreen("Teacher Dashboard");
+        TextView hello=tv("Hello, "+name+"\nTeacher Account",22,Color.DKGRAY,true);
+        hello.setPadding(dp(18),dp(20),dp(18),dp(20));
+        root.addView(hello,new LinearLayout.LayoutParams(-1,dp(100)));
+        TextView loading=tv("Assigned live classes loading...",16,Color.DKGRAY,false);
+        loading.setPadding(dp(18),dp(10),dp(18),dp(10)); root.addView(loading,new LinearLayout.LayoutParams(-1,0,1));
+        FirebaseUser u=auth.getCurrentUser();
+        if(u!=null){
+            db.collection("liveRooms").whereEqualTo("teacherEmail",u.getEmail()).get().addOnSuccessListener(res->{
+                LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(14),0,dp(14),dp(20));
+                if(res.isEmpty()) list.addView(centerMessage("Admin ने अभी कोई live class assign नहीं की है."));
+                else for(QueryDocumentSnapshot d:res) list.addView(teacherRoomCard(d));
+                root.removeView(loading); root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+            }).addOnFailureListener(e->loading.setText("Live rooms load नहीं हुए: "+error(e)));
+        }
+        TextView logout=button("TEACHER LOGOUT");
+        root.addView(logout,new LinearLayout.LayoutParams(-1,dp(55)));
+        logout.setOnClickListener(v->{auth.signOut();setContentView(authScreen(false));});
+        setContentView(root); return root;
+    }
+
+    private TextView teacherRoomCard(QueryDocumentSnapshot d){
+        String title=d.getString("roomTitle"); if(title==null)title="Live Class Room";
+        String schedule=d.getString("schedule"); if(schedule==null)schedule="";
+        String url=d.getString("liveUrl"); if(url==null)url="";
+        String roomPassword=d.getString("roomPassword"); if(roomPassword==null)roomPassword="";
+        LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(16),dp(14),dp(16),dp(14)); box.setBackground(bg(Color.WHITE,12));
+        TextView t=tv("🔴 "+title,19,Color.rgb(35,35,35),true); box.addView(t,new LinearLayout.LayoutParams(-1,dp(45)));
+        box.addView(tv("Schedule: "+schedule,14,Color.DKGRAY,false),new LinearLayout.LayoutParams(-1,dp(35)));
+        EditText pass=input("Class Room Password"); box.addView(pass,new LinearLayout.LayoutParams(-1,dp(50)));
+        TextView join=button("START / JOIN LIVE CLASS"); box.addView(join,new LinearLayout.LayoutParams(-1,dp(52)));
+        join.setOnClickListener(v->{if(pass.getText().toString().equals(roomPassword)){openUrl(url);}else toast("Wrong class room password");});
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(190)); lp.setMargins(0,dp(6),0,dp(10)); box.setLayoutParams(lp);
+        return box;
+    }
+
     private String error(Exception e){
         return e==null?"Something went wrong":(e.getMessage()==null?"Authentication failed":e.getMessage());
     }
@@ -140,6 +233,7 @@ public class MainActivity extends Activity {
             String name=doc.exists()?doc.getString("name"):null;
             if(name==null || name.trim().isEmpty()) name=u.getEmail()==null?"Student":u.getEmail().split("@")[0];
             if(doc.exists() && "admin".equals(doc.getString("role"))) setContentView(adminHome(name));
+            else if(doc.exists() && "teacher".equals(doc.getString("role"))) setContentView(teacherHome(name));
             else setContentView(home(name));
         }).addOnFailureListener(e -> setContentView(home(u.getEmail()==null?"Student":u.getEmail().split("@")[0])));
     }
