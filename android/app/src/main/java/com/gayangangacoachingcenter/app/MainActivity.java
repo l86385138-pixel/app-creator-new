@@ -152,7 +152,8 @@ public class MainActivity extends Activity {
         TextView t=tv(title,16,Color.rgb(45,45,45),false); t.setGravity(Gravity.CENTER);
         c.addView(t,new LinearLayout.LayoutParams(-1,dp(58)));
         c.setOnClickListener(v -> {
-            if(title.equals("Paid Classes")) paidClassesScreen();\n            else if(title.equals("Free Courses")) coursesScreen();
+            if(title.equals("Paid Classes")) paidClassesScreen();
+            else if(title.equals("Free Courses")) coursesScreen();
             else if(title.equals("Free Weekly Test") || title.equals("Paid Test Series") || title.equals("Daily Quiz")) testsScreen();
             else if(title.equals("Books") || title.equals("PDF Class Notes")) notesScreen();
             else showFeature(title);
