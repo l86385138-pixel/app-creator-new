@@ -1,70 +1,70 @@
 const { initializeApp } = require("firebase/app");
 const { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } = require("firebase/auth");
-const { getFirestore, collection, getDocs, doc, getDoc, query, orderBy } = require("firebase/firestore");
+const { getFirestore, collection, getDocs, doc, getDoc } = require("firebase/firestore");
 const cfg = require("./firebase-config");
 
 const app = initializeApp(cfg);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const root = document.getElementById("app");
+let cachedCourses = [];
 
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-function layout(content){
-  root.innerHTML = '<div class="top"><div class="brand">GAYAN GANGA COCHING CENTER</div><button class="btn gray" id="logout">LOGOUT</button></div><div class="wrap">'+content+'</div>';
-  document.getElementById("logout").onclick=()=>signOut(auth);
-}
+function isFree(x){return x.access==="free" || x.price==="0" || x.price===0 || !x.price;}
+
 function login(){
-  root.innerHTML='<div class="login"><h1>Student Login</h1><p class="muted">Laptop/Desktop Student App</p><input id="email" class="input" placeholder="Email"><input id="pass" type="password" class="input" placeholder="Password"><div id="msg" class="error"></div><button id="login" class="btn">LOGIN</button></div>';
+  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">GG</div><h1>Gayan Ganga</h1><p>Student Login</p><input id="email" class="input" placeholder="Email"><input id="pass" type="password" class="input" placeholder="Password"><div id="msg" class="error"></div><button id="login" class="primary-btn">LOGIN</button></div></div>';
   document.getElementById("login").onclick=async()=>{
     const msg=document.getElementById("msg");
-    try{msg.textContent="Please wait...";await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("pass").value); }
+    try{msg.textContent="Please wait...";await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("pass").value);}
     catch(e){msg.textContent=e.message||"Login failed";}
   };
 }
+
+function shell(content,active="Home"){
+  root.innerHTML='<header class="navbar"><div class="nav-left"><div class="brand-mark">GG</div><button class="nav-link '+(active==="Home"?"active":"")+'" onclick="loadHome()">Home</button><button class="nav-link" onclick="showMessage('Paid Classes')">Paid Classes</button><button class="nav-link" onclick="showMessage('Purchases')">Purchases</button><button class="nav-link" onclick="showLive()">Live</button><button class="nav-link" onclick="showMore()">More ▾</button></div><div class="nav-center"><div class="search"><span>⌕</span><input id="searchInput" placeholder="Search" oninput="filterCourses(this.value)"></div></div><div class="nav-right"><button class="icon-btn" onclick="toggleTheme()">☾</button><button class="profile" onclick="showProfile()">L</button></div></header><main class="page">'+content+'</main>';
+}
+function showMessage(title){shell('<div class="empty-page"><div class="big-icon">▣</div><h2>'+esc(title)+'</h2><p class="muted">यह section अभी Free system के लिए तैयार किया जा रहा है।</p><button class="primary-btn" onclick="loadHome()">BACK HOME</button></div>',title);}
+function showMore(){shell('<div class="empty-page"><h2>More</h2><div class="more-grid"><button onclick="loadTests()" class="browse-card">Free Tests</button><button onclick="loadNotes()" class="browse-card">PDF / Notes</button><button onclick="showProfile()" class="browse-card">My Profile</button><button onclick="signOut(auth)" class="browse-card">Logout</button></div></div>','More');}
+function showProfile(){shell('<div class="empty-page"><div class="profile-large">L</div><h2>Student Profile</h2><p class="muted">'+esc(auth.currentUser?.email||"")+'</p><button class="primary-btn" onclick="signOut(auth)">LOGOUT</button></div>');}
+function toggleTheme(){document.body.classList.toggle("dark");}
+function showLive(){
+  shell('<section class="hero-title"><h1>Live Classes</h1><p>Current live classes from your courses</p></section><div id="liveList" class="course-grid">Loading...</div>','Live');
+  loadLiveList();
+}
+async function loadLiveList(){
+  const el=document.getElementById("liveList"); if(!el)return;
+  try{const snap=await getDocs(collection(db,"courses"));let h="";
+    snap.forEach(d=>{const x=d.data();if(x.liveActive&&x.liveUrl)h+=courseCard(d.id,x,true);});
+    el.innerHTML=h||'<div class="empty-card">अभी कोई live class नहीं चल रही है।</div>';
+  }catch(e){el.innerHTML='<div class="error">'+esc(e.message)+'</div>';}
+}
+function courseCard(id,x,live=false){
+  const image=x.imageUrl?'<img src="'+esc(x.imageUrl)+'" onerror="this.style.display=\'none\'">':'<div class="course-placeholder">🎓</div>';
+  return '<article class="course-card">'+image+'<div class="course-body"><span class="tag">'+(live?"🔴 LIVE":"FREE")+'</span><h3>'+esc(x.title||"Course")+'</h3><p>'+esc(x.description||"")+'</p><button class="primary-btn" onclick="openCourse(\''+id+'\',\''+esc(x.title||"Course").replace(/'/g,"\\'")+'\')">'+(live?"OPEN LIVE":"VIEW COURSE")+'</button></div></article>';
+}
 async function loadHome(){
-  layout('<h2>Student Dashboard</h2><p class="muted">Free learning content</p><div id="content">Loading...</div>');
-  const c=document.getElementById("content");
+  shell('<section class="browse-head"><div><h1>Browse</h1><p>Learn from your coaching classes</p></div><div class="arrows"><button>←</button><button>→</button></div></section><div class="browse-grid"><button onclick="filterBrowse('paid')" class="browse-card"><span>🎓</span><b>Paid Classes</b></button><button onclick="showMessage('Purchases')" class="browse-card"><span>⇩</span><b>Purchases</b></button><button onclick="showLive()" class="browse-card"><span>▣</span><b>Live</b></button><button onclick="filterBrowse('free')" class="browse-card"><span>🎓</span><b>Free Courses</b></button></div><section class="featured"><div class="section-title"><h2>Featured</h2><div class="arrows"><button>←</button><button>→</button></div></div><div id="featured" class="course-grid">Loading...</div></section><section class="quick"><div class="section-title"><h2>Free Tests</h2><button class="outline-btn" onclick="loadTests()">VIEW ALL</button></div><div id="testPreview" class="course-grid">Loading...</div></section>');
   try{
-    const courses=await getDocs(collection(db,"courses"));
-    let html='<div class="section"><h2>Free Courses</h2><div class="grid">';
-    courses.forEach(d=>{const x=d.data();if(x.access==="free"||x.price==="0"||!x.price)html+='<div class="card"><h3>'+esc(x.title||"Course")+'</h3><p>'+esc(x.description||"")+'</p><button class="btn" onclick="openCourse(\''+d.id+'\',\''+esc(x.title||"Course").replace(/'/g,"\\'")+'\')">OPEN COURSE</button></div>';});
-    html+='</div></div><div class="section"><h2>Free Tests</h2><div id="tests">Loading...</div></div><div class="section"><h2>PDF / Notes</h2><div id="notes">Loading...</div></div>';
-    c.innerHTML=html;
-    await loadTests(); await loadNotes();
-  }catch(e){c.innerHTML='<div class="error">'+esc(e.message)+'</div>';}
+    const snap=await getDocs(collection(db,"courses"));cachedCourses=[];
+    snap.forEach(d=>{const x=d.data();cachedCourses.push({id:d.id,x});});
+    renderCourses(cachedCourses.filter(a=>isFree(a.x)),"featured");
+    const ts=await getDocs(collection(db,"tests"));let h="";let n=0;ts.forEach(d=>{if(n++<4){const x=d.data();h+='<article class="mini-card"><span>📝</span><div><h3>'+esc(x.title||"Free Test")+'</h3><p>'+esc(x.description||"")+'</p></div><button class="outline-btn" onclick="openTest(\''+d.id+'\')">START</button></article>';}});document.getElementById("testPreview").innerHTML=h||'<div class="empty-card">अभी कोई test उपलब्ध नहीं है।</div>';
+  }catch(e){document.getElementById("featured").innerHTML='<div class="error">'+esc(e.message)+'</div>';}
 }
-async function loadTests(){
-  const el=document.getElementById("tests"); const snap=await getDocs(collection(db,"tests"));
-  let h='<div class="grid">'; snap.forEach(d=>{const x=d.data();h+='<div class="card"><h3>'+esc(x.title||"Test")+'</h3><p>'+esc(x.description||"")+'</p><button class="btn" onclick="openTest(\''+d.id+'\')">START TEST</button></div>';}); h+='</div>'; el.innerHTML=h;
-}
-async function loadNotes(){
-  const el=document.getElementById("notes"); const snap=await getDocs(collection(db,"notes"));
-  let h='<div class="grid">'; snap.forEach(d=>{const x=d.data();const u=x.downloadUrl||"";h+='<div class="card"><h3>📄 '+esc(x.title||"Notes")+'</h3><p>'+esc(x.description||"")+'</p>'+(u?'<a class="btn" href="'+esc(u)+'" target="_blank">OPEN PDF</a>':"")+'</div>';}); h+='</div>';el.innerHTML=h;
-}
+function renderCourses(items,target){const el=document.getElementById(target);if(!el)return;el.innerHTML=items.length?items.map(a=>courseCard(a.id,a.x)).join(""):'<div class="empty-card">अभी कोई free course उपलब्ध नहीं है।</div>';}
+function filterCourses(q){q=q.toLowerCase();renderCourses(cachedCourses.filter(a=>isFree(a.x)&&((a.x.title||"").toLowerCase().includes(q)||(a.x.description||"").toLowerCase().includes(q))),"featured");}
+function filterBrowse(type){renderCourses(cachedCourses.filter(a=>type==="free"?isFree(a.x):!isFree(a.x)),"featured");}
 async function openCourse(id,title){
-  layout('<div class="row"><button class="btn gray" onclick="loadHome()">← BACK</button><h2>'+esc(title)+'</h2></div><div id="courseContent">Loading...</div>');
-  const el=document.getElementById("courseContent"); const subs=await getDocs(collection(db,"courses",id,"subjects"));
-  let h='<div class="grid">';
-  subs.forEach(s=>{const x=s.data();h+='<div class="card"><h3>'+esc(x.title||"Subject")+'</h3><button class="btn" onclick="openSubject(\''+id+'\',\''+s.id+'\',\''+esc(x.title||"Subject").replace(/'/g,"\\'")+'\')">OPEN SUBJECT</button></div>';});
-  h+='</div><div class="section"><div class="card" id="liveBox">Checking live class...</div></div>';el.innerHTML=h;
-  const c=await getDoc(doc(db,"courses",id));const x=c.data()||{};
-  document.getElementById("liveBox").innerHTML=x.liveActive&&x.liveUrl?'<h3>🔴 '+esc(x.liveTitle||"Live Class")+'</h3><p>'+esc(x.liveSchedule||"")+'</p><a class="btn" href="'+esc(x.liveUrl)+'" target="_blank">OPEN LIVE CLASS</a>':'<h3>Live Class</h3><p class="muted">No live class running now.</p>';
+  shell('<div class="inner-head"><button class="back-btn" onclick="loadHome()">←</button><div><h1>'+esc(title)+'</h1><p>Course content</p></div></div><div class="course-tabs"><button onclick="loadSubjects(\''+id+'\')">Subjects</button><button onclick="loadCourseLive(\''+id+'\')">Live</button><button onclick="loadCourseNotes(\''+id+'\')">Notes</button></div><div id="courseContent" class="course-grid">Loading...</div>');
+  loadSubjects(id);
 }
-async function openSubject(cid,sid,title){
-  layout('<div class="row"><button class="btn gray" onclick="openCourse(\''+cid+'\',\'Course\')">← BACK</button><h2>'+esc(title)+'</h2></div><div id="lessons">Loading...</div>');
-  const el=document.getElementById("lessons");const snap=await getDocs(collection(db,"courses",cid,"subjects",sid,"lessons"));let h='<div class="grid">';
-  snap.forEach(d=>{const x=d.data();h+='<div class="card"><h3>▶ '+esc(x.title||"Video")+'</h3>'+(x.videoUrl?'<a class="btn" href="'+esc(x.videoUrl)+'" target="_blank">WATCH VIDEO</a>':"")+'</div>';});
-  h+='</div>';el.innerHTML=h;
-}
-async function openTest(testId){
-  const qSnap=await getDocs(collection(db,"tests",testId,"questions"));let qs=[];qSnap.forEach(d=>qs.push({id:d.id,...d.data()}));
-  let i=0,score=0;
-  function render(){
-    if(i>=qs.length){layout('<h2>Test Result</h2><div class="card"><h2>'+score+' / '+qs.length+'</h2><p>Test completed.</p><button class="btn" onclick="loadHome()">BACK HOME</button></div>');return;}
-    const q=qs[i];layout('<h2>Free Test</h2><div class="card"><h3>Q'+(i+1)+'. '+esc(q.question)+'</h3><label><input type="radio" name="a" value="1"> '+esc(q.option1)+'</label><br><label><input type="radio" name="a" value="2"> '+esc(q.option2)+'</label><br><label><input type="radio" name="a" value="3"> '+esc(q.option3)+'</label><br><label><input type="radio" name="a" value="4"> '+esc(q.option4)+'</label><br><button id="next" class="btn">'+(i===qs.length-1?"SUBMIT":"NEXT")+'</button></div>');
-    document.getElementById("next").onclick=()=>{const a=document.querySelector('input[name="a"]:checked');if(!a)return; if(a.value===String(q.answer||q.correctAnswer))score++;i++;render();};
-  }
-  render();
-}
-window.loadHome=loadHome;window.openCourse=openCourse;window.openSubject=openSubject;window.openTest=openTest;
+async function loadSubjects(id){const el=document.getElementById("courseContent");el.innerHTML="Loading...";const snap=await getDocs(collection(db,"courses",id,"subjects"));let h="";snap.forEach(s=>{const x=s.data();h+='<article class="subject-card"><div class="subject-icon">📚</div><div><h3>'+esc(x.title||"Subject")+'</h3><button class="outline-btn" onclick="openSubject(\''+id+'\',\''+s.id+'\',\''+esc(x.title||"Subject").replace(/'/g,"\\'")+'\')">OPEN SUBJECT</button></div></article>';});el.innerHTML=h||'<div class="empty-card">अभी subjects add नहीं किए गए हैं।</div>';}
+async function loadCourseLive(id){const el=document.getElementById("courseContent");const d=await getDoc(doc(db,"courses",id));const x=d.data()||{};el.innerHTML=x.liveActive&&x.liveUrl?'<article class="live-card"><span class="live-dot">● LIVE</span><h2>'+esc(x.liveTitle||"Live Class")+'</h2><p>'+esc(x.liveSchedule||"")+'</p><a class="primary-btn" href="'+esc(x.liveUrl)+'" target="_blank">JOIN LIVE CLASS</a></article>':'<div class="empty-card">अभी कोई live class नहीं चल रही है।</div>';}
+async function loadCourseNotes(id){const el=document.getElementById("courseContent");const snap=await getDocs(collection(db,"notes"));let h="";snap.forEach(d=>{const x=d.data();if(x.courseId===id){h+='<article class="mini-card"><span>📄</span><div><h3>'+esc(x.title||"Notes")+'</h3><p>'+esc(x.description||"")+'</p></div>'+(x.downloadUrl?'<a class="outline-btn" href="'+esc(x.downloadUrl)+'" target="_blank">OPEN PDF</a>':"")+'</article>';}});el.innerHTML=h||'<div class="empty-card">इस course के लिए अभी notes नहीं हैं।</div>';}
+async function openSubject(cid,sid,title){shell('<div class="inner-head"><button class="back-btn" onclick="openCourse(\''+cid+'\',\'Course\')">←</button><div><h1>'+esc(title)+'</h1><p>Recorded video classes</p></div></div><div id="lessons" class="course-grid">Loading...</div>');const el=document.getElementById("lessons");const snap=await getDocs(collection(db,"courses",cid,"subjects",sid,"lessons"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="video-card"><div class="video-thumb">▶</div><div class="course-body"><h3>'+esc(x.title||"Video Class")+'</h3><p>'+esc(x.description||"")+'</p>'+(x.videoUrl?'<a class="primary-btn" href="'+esc(x.videoUrl)+'" target="_blank">WATCH VIDEO</a>':"")+'</div></article>';});el.innerHTML=h||'<div class="empty-card">अभी video classes नहीं हैं।</div>';}
+async function loadTests(){shell('<div class="inner-head"><button class="back-btn" onclick="loadHome()">←</button><div><h1>Free Tests</h1><p>Practice and check your preparation</p></div></div><div id="allTests" class="course-grid">Loading...</div>');const el=document.getElementById("allTests");const snap=await getDocs(collection(db,"tests"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="test-card"><span>📝</span><h3>'+esc(x.title||"Test")+'</h3><p>'+esc(x.description||"")+'</p><button class="primary-btn" onclick="openTest(\''+d.id+'\')">START TEST</button></article>';});el.innerHTML=h||'<div class="empty-card">अभी कोई test उपलब्ध नहीं है।</div>';}
+async function loadNotes(){shell('<div class="inner-head"><button class="back-btn" onclick="loadHome()">←</button><div><h1>PDF / Notes</h1><p>Study material</p></div></div><div id="allNotes" class="course-grid">Loading...</div>');const el=document.getElementById("allNotes");const snap=await getDocs(collection(db,"notes"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>📄</span><div><h3>'+esc(x.title||"Notes")+'</h3><p>'+esc(x.description||"")+'</p></div>'+(x.downloadUrl?'<a class="outline-btn" href="'+esc(x.downloadUrl)+'" target="_blank">OPEN PDF</a>':"")+'</article>';});el.innerHTML=h||'<div class="empty-card">अभी notes उपलब्ध नहीं हैं।</div>';}
+async function openTest(testId){const qSnap=await getDocs(collection(db,"tests",testId,"questions"));let qs=[];qSnap.forEach(d=>qs.push(d.data()));let i=0,score=0;function render(){if(i>=qs.length){shell('<div class="result-card"><div class="result-icon">✓</div><h1>Test Completed</h1><h2>'+score+' / '+qs.length+'</h2><p>Your test has been completed.</p><button class="primary-btn" onclick="loadHome()">BACK HOME</button></div>');return;}const q=qs[i];shell('<div class="test-screen"><div class="test-top"><button class="back-btn" onclick="loadHome()">←</button><span>Question '+(i+1)+' of '+qs.length+'</span></div><div class="question-card"><h2>'+esc(q.question)+'</h2><label><input type="radio" name="a" value="1"> '+esc(q.option1)+'</label><label><input type="radio" name="a" value="2"> '+esc(q.option2)+'</label><label><input type="radio" name="a" value="3"> '+esc(q.option3)+'</label><label><input type="radio" name="a" value="4"> '+esc(q.option4)+'</label><button id="next" class="primary-btn">'+(i===qs.length-1?"SUBMIT":"NEXT")+'</button></div></div>');document.getElementById("next").onclick=()=>{const a=document.querySelector('input[name="a"]:checked');if(!a)return;if(a.value===String(q.answer||q.correctAnswer))score++;i++;render();};}render();}
+window.loadHome=loadHome;window.openCourse=openCourse;window.openSubject=openSubject;window.openTest=openTest;window.loadTests=loadTests;window.loadNotes=loadNotes;window.showLive=showLive;window.showProfile=showProfile;window.showMore=showMore;window.showMessage=showMessage;window.toggleTheme=toggleTheme;window.filterCourses=filterCourses;window.filterBrowse=filterBrowse;window.loadCourseLive=loadCourseLive;window.loadCourseNotes=loadCourseNotes;window.loadSubjects=loadSubjects;
 onAuthStateChanged(auth,u=>u?loadHome():login());
