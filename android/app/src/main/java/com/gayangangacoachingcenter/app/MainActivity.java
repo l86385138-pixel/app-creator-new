@@ -203,6 +203,7 @@ public class MainActivity extends Activity {
         String description=doc.getString("description"); if(description==null) description="";
         String imageUrl=doc.getString("imageUrl");
         String price=doc.getString("price"); if(price==null && doc.get("price")!=null) price=String.valueOf(doc.get("price")); if(price==null) price="";
+        final String courseTitle=title;
         LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(14),dp(10),dp(14),dp(14)); card.setBackground(bg(Color.WHITE,14));
         LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(390)); cp.setMargins(0,dp(7),0,dp(10)); card.setLayoutParams(cp);
         ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -212,7 +213,7 @@ public class MainActivity extends Activity {
         TextView t=tv(title,18,Color.rgb(45,45,45),false); t.setPadding(dp(5),dp(12),dp(5),dp(4)); card.addView(t,new LinearLayout.LayoutParams(-1,dp(55)));
         TextView d=tv(description,14,Color.DKGRAY,false); d.setPadding(dp(5),0,dp(5),0); card.addView(d,new LinearLayout.LayoutParams(-1,dp(45)));
         TextView view=button("VIEW"); LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(-1,dp(50)); vp.setMargins(dp(5),dp(5),dp(5),0); card.addView(view,vp);
-        view.setOnClickListener(v -> paidCourseDetail(doc.getId(),title));
+        view.setOnClickListener(v -> paidCourseDetail(doc.getId(),courseTitle));
         return card;
     }
 
