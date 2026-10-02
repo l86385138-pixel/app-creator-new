@@ -12,10 +12,20 @@ android {
         versionName '1.0'
     }
 
+    signingConfigs {
+        release {
+            storeFile file('../release-keystore.jks')
+            storePassword 'android'
+            keyAlias 'appcreator'
+            keyPassword 'android'
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             shrinkResources false
+            signingConfig signingConfigs.release
         }
     }
 }
