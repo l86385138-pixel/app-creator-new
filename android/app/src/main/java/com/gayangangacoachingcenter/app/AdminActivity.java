@@ -134,6 +134,7 @@ public class AdminActivity extends Activity {
         buildStudentsSection(r);
         buildResultsSection(r);
         buildGenericUploadSection(r);
+        buildTeacherSection(r);
 
         TextView logout=button("ADMIN LOGOUT");
         add(r,logout,55);
@@ -387,6 +388,48 @@ public class AdminActivity extends Activity {
                 }
             }).addOnFailureListener(e->toast("Results load failed: "+error(e)));
         });
+    }
+
+    private void buildTeacherSection(LinearLayout r){
+        addSectionTitle(r,"11. TEACHER INVITE + LIVE ROOM");
+        EditText teacherName=input("Teacher name");
+        EditText teacherEmail=input("Teacher email");
+        EditText roomTitle=input("Live class / room title");
+        EditText roomPassword=input("Class room password");
+        EditText liveUrl=input("Teacher live link (Google Meet / Zoom / YouTube)");
+        EditText schedule=input("Class schedule");
+        add(r,teacherName,52); add(r,teacherEmail,52); add(r,roomTitle,52);
+        add(r,roomPassword,52); add(r,liveUrl,52); add(r,schedule,52);
+        TextView invite=button("CREATE TEACHER INVITE + LIVE ROOM");
+        add(r,invite,54);
+        invite.setOnClickListener(v -> {
+            String n=teacherName.getText().toString().trim(), em=teacherEmail.getText().toString().trim();
+            String rt=roomTitle.getText().toString().trim(), pw=roomPassword.getText().toString().trim();
+            String url=liveUrl.getText().toString().trim(), sc=schedule.getText().toString().trim();
+            if(n.isEmpty()||em.isEmpty()||rt.isEmpty()||pw.isEmpty()||url.isEmpty()){
+                toast("Teacher name, email, room title, password और live link भरें"); return;
+            }
+            invite.setText("CREATING...");
+            Map<String,Object> inv=new HashMap<>();
+            inv.put("name",n); inv.put("email",em); inv.put("active",true);
+            inv.put("createdBy",auth.getCurrentUser().getUid());
+            inv.put("createdAt",FieldValue.serverTimestamp());
+            db.collection("teacherInvites").add(inv).addOnSuccessListener(x->{
+                Map<String,Object> room=new HashMap<>();
+                room.put("teacherName",n); room.put("teacherEmail",em);
+                room.put("teacherInviteId",x.getId());
+                room.put("roomTitle",rt); room.put("roomPassword",pw);
+                room.put("liveUrl",url); room.put("schedule",sc);
+                room.put("active",true); room.put("createdBy",auth.getCurrentUser().getUid());
+                room.put("createdAt",FieldValue.serverTimestamp());
+                db.collection("liveRooms").add(room).addOnSuccessListener(y->{
+                    invite.setText("CREATE TEACHER INVITE + LIVE ROOM");
+                    toast("Teacher invite + live room created. Teacher: "+em);
+                }).addOnFailureListener(e->{invite.setText("CREATE TEACHER INVITE + LIVE ROOM");toast("Live room create failed: "+error(e));});
+            }).addOnFailureListener(e->{invite.setText("CREATE TEACHER INVITE + LIVE ROOM");toast("Invite create failed: "+error(e));});
+        });
+        TextView info=tv("Teacher app में 'Teacher? Activate Teacher Account' चुनकर इसी email से account बनाएगा. Password Firebase Auth में रहेगा.",13,false);
+        add(r,info,58);
     }
 
     private void buildGenericUploadSection(LinearLayout r){
