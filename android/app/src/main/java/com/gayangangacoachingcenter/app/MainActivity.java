@@ -9,6 +9,8 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -258,20 +260,184 @@ public class MainActivity extends Activity {
 
     private void testsScreen(){
         LinearLayout root=baseScreen("Tests & Quiz");
-        TextView loading=tv("Tests loading from Firebase...",17,Color.DKGRAY,false); loading.setPadding(dp(20),dp(20),dp(20),dp(20));
-        root.addView(loading,new LinearLayout.LayoutParams(-1,-1)); setContentView(root);
+        TextView loading=tv("Tests loading from Firebase...",17,Color.DKGRAY,false);
+        loading.setPadding(dp(20),dp(20),dp(20),dp(20));
+        root.addView(loading,new LinearLayout.LayoutParams(-1,-1));
+        setContentView(root);
         db.collection("tests").get().addOnSuccessListener(result -> {
-            LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(14),dp(10),dp(14),dp(20));
+            LinearLayout list=new LinearLayout(this);
+            list.setOrientation(LinearLayout.VERTICAL);
+            list.setPadding(dp(14),dp(10),dp(14),dp(20));
             if(result.isEmpty()){
-                TextView empty=tv("अभी कोई test उपलब्ध नहीं है.\nFirestore → tests collection में test जोड़ें.",17,Color.DKGRAY,false);
-                empty.setGravity(Gravity.CENTER); list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
-            } else for(QueryDocumentSnapshot doc:result){
-                String title=doc.getString("title"); if(title==null) title=doc.getString("name"); if(title==null) title="Test";
-                String description=doc.getString("description"); if(description==null) description="";
-                list.addView(courseCard(title,description,""));
+                TextView empty=tv("अभी कोई test उपलब्ध नहीं है.\n\nFirestore → tests collection में test जोड़ें.",17,Color.DKGRAY,false);
+                empty.setGravity(Gravity.CENTER);
+                list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
+            } else {
+                for(QueryDocumentSnapshot doc:result){
+                    String title=doc.getString("title");
+                    if(title==null) title=doc.getString("name");
+                    if(title==null) title="Test";
+                    String description=doc.getString("description");
+                    if(description==null) description="";
+                    String duration=doc.getString("duration");
+                    if(duration==null) duration="";
+                    list.addView(testCard(doc.getId(),title,description,duration));
+                }
             }
-            root.removeViews(1,root.getChildCount()-1); root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+            root.removeViews(1,root.getChildCount()-1);
+            root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         }).addOnFailureListener(e -> loading.setText("Tests load नहीं हो सके.\n\n"+error(e)));
+    }
+
+    private LinearLayout testCard(String id,String title,String description,String duration){
+        LinearLayout card=new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16),dp(14),dp(16),dp(12));
+        card.setBackground(bg(Color.WHITE,12));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(150));
+        lp.setMargins(0,dp(7),0,dp(7));
+        card.setLayoutParams(lp);
+
+        TextView t=tv(title,19,Color.rgb(25,118,210),true);
+        card.addView(t,new LinearLayout.LayoutParams(-1,dp(38)));
+        TextView d=tv(description,14,Color.DKGRAY,false);
+        d.setGravity(Gravity.TOP);
+        card.addView(d,new LinearLayout.LayoutParams(-1,0,1));
+        TextView info=tv(duration.isEmpty()?"START TEST":"Duration: "+duration,15,Color.rgb(210,55,55),true);
+        info.setGravity(Gravity.CENTER_VERTICAL);
+        card.addView(info,new LinearLayout.LayoutParams(-1,dp(34)));
+        card.setOnClickListener(v -> startTest(id,title));
+        return card;
+    }
+
+    private void startTest(String testId,String testTitle){
+        db.collection("tests").document(testId).collection("questions").get()
+            .addOnSuccessListener(result -> {
+                if(result.isEmpty()){
+                    Toast.makeText(this,"इस test में अभी questions नहीं हैं.",Toast.LENGTH_LONG).show();
+                    return;
+                }
+                java.util.ArrayList<com.google.firebase.firestore.DocumentSnapshot> questions=new java.util.ArrayList<>();
+                for(com.google.firebase.firestore.DocumentSnapshot doc:result) questions.add(doc);
+                showQuestion(testId,testTitle,questions,0,new int[]{0},new int[]{-1});
+            })
+            .addOnFailureListener(e -> Toast.makeText(this,"Questions load नहीं हुए: "+error(e),Toast.LENGTH_LONG).show());
+    }
+
+    private void showQuestion(String testId,String testTitle,
+                              java.util.ArrayList<com.google.firebase.firestore.DocumentSnapshot> questions,
+                              int index,int[] score,int[] selected){
+        LinearLayout root=baseScreen(testTitle);
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout body=new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(dp(18),dp(16),dp(18),dp(24));
+
+        TextView progress=tv("Question "+(index+1)+" / "+questions.size(),15,Color.DKGRAY,true);
+        body.addView(progress,new LinearLayout.LayoutParams(-1,dp(40)));
+
+        com.google.firebase.firestore.DocumentSnapshot q=questions.get(index);
+        String question=q.getString("question");
+        if(question==null) question=q.getString("text");
+        if(question==null) question="Question";
+
+        TextView qt=tv(question,20,Color.rgb(35,35,35),true);
+        qt.setGravity(Gravity.TOP);
+        body.addView(qt,new LinearLayout.LayoutParams(-1,dp(95)));
+
+        RadioGroup options=new RadioGroup(this);
+        options.setOrientation(RadioGroup.VERTICAL);
+
+        String[] keys={"option1","option2","option3","option4"};
+        for(String key:keys){
+            String value=q.getString(key);
+            if(value==null) value="";
+            if(value.trim().isEmpty()) continue;
+            RadioButton rb=new RadioButton(this);
+            rb.setText(value);
+            rb.setTextSize(17);
+            rb.setPadding(dp(8),dp(10),dp(8),dp(10));
+            options.addView(rb,new RadioGroup.LayoutParams(-1,dp(58)));
+        }
+
+        body.addView(options,new LinearLayout.LayoutParams(-1,dp(245)));
+
+        TextView action=button(index==questions.size()-1?"SUBMIT TEST":"NEXT QUESTION");
+        LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(-1,dp(55));
+        ap.topMargin=dp(18);
+        body.addView(action,ap);
+
+        if(selected[0]>=0){
+            int child=selected[0];
+            if(child<options.getChildCount()) ((RadioButton)options.getChildAt(child)).setChecked(true);
+        }
+
+        action.setOnClickListener(v -> {
+            int checked=options.getCheckedRadioButtonId();
+            if(checked==-1){
+                Toast.makeText(this,"पहले एक option select करें.",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            View checkedView=options.findViewById(checked);
+            int selectedIndex=options.indexOfChild(checkedView);
+            String answer=q.getString("answer");
+            if(answer==null) answer=q.getString("correctAnswer");
+            String correctText="";
+            if(answer!=null){
+                String[] answerKeys={"option1","option2","option3","option4"};
+                if(answer.matches("[1-4]")) correctText=q.getString(answerKeys[Integer.parseInt(answer)-1]);
+                else correctText=answer;
+            }
+            if(correctText!=null && !correctText.isEmpty() &&
+               ((RadioButton)checkedView).getText().toString().trim().equalsIgnoreCase(correctText.trim())){
+                score[0]++;
+            }
+            selected[0]=selectedIndex;
+            if(index<questions.size()-1){
+                showQuestion(testId,testTitle,questions,index+1,score,new int[]{-1});
+            } else {
+                saveTestResult(testId,testTitle,questions.size(),score[0]);
+            }
+        });
+
+        scroll.addView(body);
+        root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        setContentView(root);
+    }
+
+    private void saveTestResult(String testId,String testTitle,int total,int score){
+        FirebaseUser u=auth.getCurrentUser();
+        if(u==null){ setContentView(authScreen(false)); return; }
+        Map<String,Object> result=new HashMap<>();
+        result.put("testId",testId);
+        result.put("testTitle",testTitle);
+        result.put("totalQuestions",total);
+        result.put("score",score);
+        result.put("percentage",total==0?0:(score*100.0/total));
+        result.put("submittedAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
+
+        db.collection("users").document(u.getUid()).collection("testResults").add(result)
+            .addOnSuccessListener(ref -> showScore(testTitle,total,score))
+            .addOnFailureListener(e -> {
+                Toast.makeText(this,"Score save नहीं हुआ: "+error(e),Toast.LENGTH_LONG).show();
+                showScore(testTitle,total,score);
+            });
+    }
+
+    private void showScore(String testTitle,int total,int score){
+        LinearLayout root=baseScreen("Test Result");
+        double pct=total==0?0:(score*100.0/total);
+        TextView result=tv("🎉 Test Completed!\n\n"+testTitle+"\n\nScore: "+score+" / "+total+
+                "\nPercentage: "+String.format(java.util.Locale.US,"%.1f",pct)+"%"+
+                "\n\nYour result has been saved to Firebase.",22,Color.rgb(35,35,35),true);
+        result.setGravity(Gravity.CENTER);
+        root.addView(result,new LinearLayout.LayoutParams(-1,0,1));
+        TextView home=button("BACK TO HOME");
+        LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(-1,dp(55));
+        hp.setMargins(dp(20),0,dp(20),dp(20));
+        root.addView(home,hp);
+        home.setOnClickListener(v->loadHome());
+        setContentView(root);
     }
 
     private LinearLayout baseScreen(String title){
