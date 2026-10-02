@@ -144,7 +144,11 @@ public class MainActivity extends Activity {
         c.addView(i,new LinearLayout.LayoutParams(-1,dp(72)));
         TextView t=tv(title,16,Color.rgb(45,45,45),false); t.setGravity(Gravity.CENTER);
         c.addView(t,new LinearLayout.LayoutParams(-1,dp(58)));
-        c.setOnClickListener(v -> {\n            if(title.equals("Paid Classes") || title.equals("Free Courses")) coursesScreen();\n            else if(title.equals("Free Weekly Test") || title.equals("Paid Test Series") || title.equals("Daily Quiz")) testsScreen();\n            else showFeature(title);\n        });
+        c.setOnClickListener(v -> {
+            if(title.equals("Paid Classes") || title.equals("Free Courses")) coursesScreen();
+            else if(title.equals("Free Weekly Test") || title.equals("Paid Test Series") || title.equals("Daily Quiz")) testsScreen();
+            else showFeature(title);
+        });
         return c;
     }
 
@@ -259,7 +263,9 @@ public class MainActivity extends Activity {
         LinearLayout nav=new LinearLayout(this); nav.setGravity(Gravity.CENTER); nav.setBackground(bg(Color.WHITE,22)); nav.setPadding(dp(8),0,dp(8),0);
         String[] n={"⌂\nHome","▤\nCourses","▣\nTests","●\nProfile"};
         for(String s:n){ TextView b=tv(s,13,Color.DKGRAY,false); b.setGravity(Gravity.CENTER); nav.addView(b,new LinearLayout.LayoutParams(0,dp(64),1)); }
-        nav.getChildAt(1).setOnClickListener(v -> coursesScreen());\n        nav.getChildAt(2).setOnClickListener(v -> testsScreen());\n        nav.getChildAt(3).setOnClickListener(v -> profileScreen(name));
+        nav.getChildAt(1).setOnClickListener(v -> coursesScreen());
+        nav.getChildAt(2).setOnClickListener(v -> testsScreen());
+        nav.getChildAt(3).setOnClickListener(v -> profileScreen(name));
         root.addView(nav,new LinearLayout.LayoutParams(-1,dp(70)));
         return root;
     }
