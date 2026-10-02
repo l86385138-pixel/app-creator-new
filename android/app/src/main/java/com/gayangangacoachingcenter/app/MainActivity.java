@@ -17,6 +17,7 @@ import android.graphics.drawable.GradientDrawable;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -143,8 +144,82 @@ public class MainActivity extends Activity {
         c.addView(i,new LinearLayout.LayoutParams(-1,dp(72)));
         TextView t=tv(title,16,Color.rgb(45,45,45),false); t.setGravity(Gravity.CENTER);
         c.addView(t,new LinearLayout.LayoutParams(-1,dp(58)));
-        c.setOnClickListener(v -> showFeature(title));
+        c.setOnClickListener(v -> {\n            if(title.equals("Paid Classes") || title.equals("Free Courses")) coursesScreen();\n            else if(title.equals("Free Weekly Test") || title.equals("Paid Test Series") || title.equals("Daily Quiz")) testsScreen();\n            else showFeature(title);\n        });
         return c;
+    }
+
+    private void coursesScreen(){
+        LinearLayout root=baseScreen("Courses");
+        TextView loading=tv("Courses loading from Firebase...",17,Color.DKGRAY,false);
+        loading.setPadding(dp(20),dp(20),dp(20),dp(20));
+        root.addView(loading,new LinearLayout.LayoutParams(-1,-1));
+        setContentView(root);
+        db.collection("courses").get().addOnSuccessListener(result -> {
+            LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(14),dp(10),dp(14),dp(20));
+            if(result.isEmpty()){
+                TextView empty=tv("अभी कोई course उपलब्ध नहीं है.\nAdmin Firebase Firestore में 'courses' collection में course add कर सकता है.",17,Color.DKGRAY,false);
+                empty.setGravity(Gravity.CENTER); list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
+            } else {
+                for(QueryDocumentSnapshot doc:result){
+                    String title=doc.getString("title");
+                    if(title==null) title=doc.getString("name");
+                    if(title==null) title="Course";
+                    String description=doc.getString("description");
+                    if(description==null) description="";
+                    String price=doc.getString("price");
+                    if(price==null && doc.get("price")!=null) price=String.valueOf(doc.get("price"));
+                    if(price==null) price="";
+                    list.addView(courseCard(title,description,price));
+                }
+            }
+            root.removeViews(1,root.getChildCount()-1);
+            root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+        }).addOnFailureListener(e -> {
+            loading.setText("Courses load नहीं हो सके.\n\n"+error(e));
+        });
+    }
+
+    private LinearLayout courseCard(String title,String description,String price){
+        LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(16),dp(14),dp(16),dp(14));
+        card.setBackground(bg(Color.WHITE,12));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(135)); lp.setMargins(0,dp(7),0,dp(7)); card.setLayoutParams(lp);
+        TextView t=tv(title,19,Color.rgb(25,118,210),true); card.addView(t,new LinearLayout.LayoutParams(-1,dp(38)));
+        TextView d=tv(description,14,Color.DKGRAY,false); d.setGravity(Gravity.TOP); card.addView(d,new LinearLayout.LayoutParams(-1,0,1));
+        TextView p=tv(price.isEmpty()?"":("₹ "+price),16,Color.rgb(210,55,55),true); p.setGravity(Gravity.CENTER_VERTICAL); card.addView(p,new LinearLayout.LayoutParams(-1,dp(32)));
+        card.setOnClickListener(v -> courseDetail(title,description,price));
+        return card;
+    }
+
+    private void courseDetail(String title,String description,String price){
+        LinearLayout root=baseScreen(title);
+        TextView body=tv(title+"\n\n"+description+"\n\n"+(price.isEmpty()?"":"Price: ₹ "+price)+"\n\nयह course Firebase Firestore से load हुआ है.",18,Color.DKGRAY,false);
+        body.setGravity(Gravity.TOP); body.setPadding(dp(22),dp(25),dp(22),dp(25));
+        root.addView(body,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
+    }
+
+    private void testsScreen(){
+        LinearLayout root=baseScreen("Tests & Quiz");
+        TextView loading=tv("Tests loading from Firebase...",17,Color.DKGRAY,false); loading.setPadding(dp(20),dp(20),dp(20),dp(20));
+        root.addView(loading,new LinearLayout.LayoutParams(-1,-1)); setContentView(root);
+        db.collection("tests").get().addOnSuccessListener(result -> {
+            LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(14),dp(10),dp(14),dp(20));
+            if(result.isEmpty()){
+                TextView empty=tv("अभी कोई test उपलब्ध नहीं है.\nFirestore → tests collection में test जोड़ें.",17,Color.DKGRAY,false);
+                empty.setGravity(Gravity.CENTER); list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
+            } else for(QueryDocumentSnapshot doc:result){
+                String title=doc.getString("title"); if(title==null) title=doc.getString("name"); if(title==null) title="Test";
+                String description=doc.getString("description"); if(description==null) description="";
+                list.addView(courseCard(title,description,""));
+            }
+            root.removeViews(1,root.getChildCount()-1); root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+        }).addOnFailureListener(e -> loading.setText("Tests load नहीं हो सके.\n\n"+error(e)));
+    }
+
+    private LinearLayout baseScreen(String title){
+        LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(Color.rgb(255,248,248));
+        TextView bar=tv("‹   "+title,20,Color.WHITE,true); bar.setPadding(dp(10),0,dp(10),0); bar.setBackgroundColor(Color.rgb(25,118,210));
+        root.addView(bar,new LinearLayout.LayoutParams(-1,dp(60))); bar.setOnClickListener(v->loadHome());
+        return root;
     }
 
     private void showFeature(String title){
@@ -184,7 +259,7 @@ public class MainActivity extends Activity {
         LinearLayout nav=new LinearLayout(this); nav.setGravity(Gravity.CENTER); nav.setBackground(bg(Color.WHITE,22)); nav.setPadding(dp(8),0,dp(8),0);
         String[] n={"⌂\nHome","▤\nCourses","▣\nTests","●\nProfile"};
         for(String s:n){ TextView b=tv(s,13,Color.DKGRAY,false); b.setGravity(Gravity.CENTER); nav.addView(b,new LinearLayout.LayoutParams(0,dp(64),1)); }
-        nav.getChildAt(3).setOnClickListener(v -> profileScreen(name));
+        nav.getChildAt(1).setOnClickListener(v -> coursesScreen());\n        nav.getChildAt(2).setOnClickListener(v -> testsScreen());\n        nav.getChildAt(3).setOnClickListener(v -> profileScreen(name));
         root.addView(nav,new LinearLayout.LayoutParams(-1,dp(70)));
         return root;
     }
