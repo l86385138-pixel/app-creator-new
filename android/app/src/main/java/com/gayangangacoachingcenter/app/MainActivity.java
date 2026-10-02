@@ -352,52 +352,133 @@ public class MainActivity extends Activity {
     }
 
     private void coursesScreen(){
-        LinearLayout root=baseScreen("Courses");
-        TextView loading=tv("Courses loading from Firebase...",17,Color.DKGRAY,false);
+        LinearLayout root=baseScreen("Free Courses");
+        TextView loading=tv("Free courses loading...",17,Color.DKGRAY,false);
         loading.setPadding(dp(20),dp(20),dp(20),dp(20));
         root.addView(loading,new LinearLayout.LayoutParams(-1,-1));
         setContentView(root);
         db.collection("courses").get().addOnSuccessListener(result -> {
-            LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(14),dp(10),dp(14),dp(20));
+            LinearLayout list=new LinearLayout(this);
+            list.setOrientation(LinearLayout.VERTICAL);
+            list.setPadding(dp(14),dp(10),dp(14),dp(20));
             if(result.isEmpty()){
-                TextView empty=tv("अभी कोई course उपलब्ध नहीं है.\nAdmin Firebase Firestore में 'courses' collection में course add कर सकता है.",17,Color.DKGRAY,false);
-                empty.setGravity(Gravity.CENTER); list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
+                TextView empty=tv("अभी कोई free course उपलब्ध नहीं है.",17,Color.DKGRAY,false);
+                empty.setGravity(Gravity.CENTER);
+                list.addView(empty,new LinearLayout.LayoutParams(-1,dp(180)));
             } else {
                 for(QueryDocumentSnapshot doc:result){
-                    String title=doc.getString("title");
-                    if(title==null) title=doc.getString("name");
-                    if(title==null) title="Course";
-                    String description=doc.getString("description");
-                    if(description==null) description="";
+                    String access=doc.getString("access");
                     String price=doc.getString("price");
-                    if(price==null && doc.get("price")!=null) price=String.valueOf(doc.get("price"));
-                    if(price==null) price="";
-                    list.addView(courseCard(title,description,price));
+                    if("free".equalsIgnoreCase(access) || "0".equals(price) || price==null || price.trim().isEmpty()){
+                        String title=doc.getString("title");
+                        if(title==null) title=doc.getString("name");
+                        if(title==null) title="Course";
+                        String description=doc.getString("description");
+                        if(description==null) description="";
+                        list.addView(freeCourseCard(doc.getId(),title,description));
+                    }
                 }
             }
             root.removeViews(1,root.getChildCount()-1);
             root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
-        }).addOnFailureListener(e -> {
-            loading.setText("Courses load नहीं हो सके.\n\n"+error(e));
-        });
+        }).addOnFailureListener(e -> loading.setText("Courses load नहीं हो सके.\\n\\n"+error(e)));
     }
 
-    private LinearLayout courseCard(String title,String description,String price){
-        LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(16),dp(14),dp(16),dp(14));
+    private LinearLayout freeCourseCard(String courseId,String title,String description){
+        LinearLayout card=new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16),dp(14),dp(16),dp(14));
         card.setBackground(bg(Color.WHITE,12));
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(135)); lp.setMargins(0,dp(7),0,dp(7)); card.setLayoutParams(lp);
-        TextView t=tv(title,19,Color.rgb(25,118,210),true); card.addView(t,new LinearLayout.LayoutParams(-1,dp(38)));
-        TextView d=tv(description,14,Color.DKGRAY,false); d.setGravity(Gravity.TOP); card.addView(d,new LinearLayout.LayoutParams(-1,0,1));
-        TextView p=tv(price.isEmpty()?"":("₹ "+price),16,Color.rgb(210,55,55),true); p.setGravity(Gravity.CENTER_VERTICAL); card.addView(p,new LinearLayout.LayoutParams(-1,dp(32)));
-        card.setOnClickListener(v -> courseDetail(title,description,price));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(145));
+        lp.setMargins(0,dp(7),0,dp(7));
+        card.setLayoutParams(lp);
+        TextView t=tv(title,19,Color.rgb(25,118,210),true);
+        card.addView(t,new LinearLayout.LayoutParams(-1,dp(38)));
+        TextView d=tv(description,14,Color.DKGRAY,false);
+        d.setGravity(Gravity.TOP);
+        card.addView(d,new LinearLayout.LayoutParams(-1,0,1));
+        TextView open=button("OPEN FREE COURSE");
+        card.addView(open,new LinearLayout.LayoutParams(-1,dp(42)));
+        card.setOnClickListener(v -> freeCourseDetail(courseId,title));
+        open.setOnClickListener(v -> freeCourseDetail(courseId,title));
         return card;
     }
 
-    private void courseDetail(String title,String description,String price){
+    private void freeCourseDetail(String courseId,String title){
         LinearLayout root=baseScreen(title);
-        TextView body=tv(title+"\n\n"+description+"\n\n"+(price.isEmpty()?"":"Price: ₹ "+price)+"\n\nयह course Firebase Firestore से load हुआ है.",18,Color.DKGRAY,false);
-        body.setGravity(Gravity.TOP); body.setPadding(dp(22),dp(25),dp(22),dp(25));
-        root.addView(body,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
+        LinearLayout tabs=new LinearLayout(this);
+        tabs.setPadding(dp(8),dp(8),dp(8),dp(8));
+        String[] names={"Subjects","Live","Notes"};
+        for(String n:names){
+            TextView tab=tv(n,15,n.equals("Subjects")?Color.WHITE:Color.DKGRAY,true);
+            tab.setGravity(Gravity.CENTER);
+            tab.setBackground(bg(n.equals("Subjects")?Color.rgb(25,118,210):Color.WHITE,8));
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(48),1);
+            p.setMargins(dp(4),0,dp(4),0);
+            tabs.addView(tab,p);
+            if(n.equals("Subjects")) tab.setOnClickListener(v -> loadFreeSubjects(root,courseId));
+            if(n.equals("Live")) tab.setOnClickListener(v -> loadFreeLive(root,courseId));
+            if(n.equals("Notes")) tab.setOnClickListener(v -> loadCourseNotes(root,courseId));
+        }
+        root.addView(tabs,new LinearLayout.LayoutParams(-1,dp(66)));
+        loadFreeSubjects(root,courseId);
+        setContentView(root);
+    }
+
+    private void loadFreeSubjects(LinearLayout root,String courseId){
+        replaceContent(root,"Subjects loading...");
+        db.collection("courses").document(courseId).collection("subjects").get().addOnSuccessListener(result -> {
+            LinearLayout list=new LinearLayout(this);
+            list.setOrientation(LinearLayout.VERTICAL);
+            list.setPadding(dp(10),dp(5),dp(10),dp(20));
+            if(result.isEmpty()) list.addView(centerMessage("अभी subjects add नहीं किए गए हैं."));
+            else for(QueryDocumentSnapshot doc:result){
+                String title=doc.getString("title");
+                if(title==null) title="Subject";
+                list.addView(subjectRow(courseId,doc.getId(),title,doc.getString("imageUrl")));
+            }
+            replaceContent(root,list);
+        }).addOnFailureListener(e -> replaceContentText(root,"Subjects load नहीं हुए.\\n\\n"+error(e)));
+    }
+
+    private void loadFreeLive(LinearLayout root,String courseId){
+        replaceContent(root,"Live class loading...");
+        db.collection("courses").document(courseId).get().addOnSuccessListener(doc -> {
+            String url=doc.getString("liveUrl");
+            Boolean active=doc.getBoolean("liveActive");
+            String title=doc.getString("liveTitle");
+            String schedule=doc.getString("liveSchedule");
+            LinearLayout box=new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setGravity(Gravity.CENTER);
+            box.setPadding(dp(25),dp(25),dp(25),dp(25));
+            if(Boolean.TRUE.equals(active) && url!=null && !url.trim().isEmpty()){
+                box.addView(centerMessage("🔴 "+(title==null?"Live Class":title)+"\\n\\n"+(schedule==null?"":schedule)));
+                TextView b=button("JOIN LIVE CLASS");
+                box.addView(b,new LinearLayout.LayoutParams(-1,dp(54)));
+                b.setOnClickListener(v -> openUrl(url));
+            } else {
+                box.addView(centerMessage("अभी कोई live class चल नहीं रही है."));
+            }
+            replaceContent(root,box);
+        }).addOnFailureListener(e -> replaceContentText(root,"Live class load नहीं हुई.\\n\\n"+error(e)));
+    }
+
+    private void loadCourseNotes(LinearLayout root,String courseId){
+        replaceContent(root,"Notes loading...");
+        db.collection("notes").whereEqualTo("courseId",courseId).get().addOnSuccessListener(result -> {
+            LinearLayout list=new LinearLayout(this);
+            list.setOrientation(LinearLayout.VERTICAL);
+            list.setPadding(dp(10),dp(5),dp(10),dp(20));
+            if(result.isEmpty()) list.addView(centerMessage("इस course के लिए अभी PDF/Notes नहीं हैं."));
+            else for(QueryDocumentSnapshot doc:result){
+                String title=doc.getString("title"); if(title==null) title="Notes";
+                String desc=doc.getString("description"); if(desc==null) desc="";
+                String path=doc.getString("storagePath");
+                list.addView(noteCard(title,desc,path));
+            }
+            replaceContent(root,list);
+        }).addOnFailureListener(e -> replaceContentText(root,"Notes load नहीं हुए.\\n\\n"+error(e)));
     }
 
     private void notesScreen(){
