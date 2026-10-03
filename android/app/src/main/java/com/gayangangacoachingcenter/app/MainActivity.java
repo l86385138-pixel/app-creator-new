@@ -912,7 +912,7 @@ public class MainActivity extends Activity {
         LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL);
         root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         db.collection("liveRooms").whereEqualTo("liveActive",true).get().addOnSuccessListener(res->{
-            if(res.isEmpty()){list.addView(centerMessage("अभी कोई Live Class नहीं चल रही है."));return;}
+            if(res.isEmpty()){list.addView(centerMessage("अभी कोई Live Class active नहीं है. Teacher के START LIVE करने के बाद यहाँ दिखेगी."));return;}
             for(QueryDocumentSnapshot d:res){
                 String title=d.getString("roomTitle"); if(title==null)title="Live Class";
                 String schedule=d.getString("schedule"); if(schedule==null)schedule="";
