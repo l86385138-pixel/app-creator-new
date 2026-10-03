@@ -191,6 +191,32 @@ async function joinStudentLive(roomId){
   await updateDoc(doc(db,"liveRooms",roomId,"participants",p.id),{offer:{type:offer.type,sdp:offer.sdp}});
 }
 
+function adminWrap(title,content){
+  shell('<section class="hero-title"><h1>'+esc(title)+'</h1><p>Gayan Ganga Admin Panel</p></section>'+content,"Admin");
+}
+async function loadAdminNotice(){
+  const [teachers,rooms,courses,users]=await Promise.all([
+    getDocs(query(collection(db,"users"),where("role","==","teacher"))),
+    getDocs(collection(db,"liveRooms")),
+    getDocs(collection(db,"courses")),
+    getDocs(collection(db,"users"))
+  ]);
+  adminWrap("Admin Dashboard",
+    '<div class="admin-grid">'+
+    '<button class="admin-card" onclick="adminUsers()"><b>Users</b><span>'+users.size+'</span></button>'+
+    '<button class="admin-card" onclick="adminInvites()"><b>Teacher Invites</b><span>Existing Students</span></button>'+
+    '<button class="admin-card" onclick="adminLiveRooms()"><b>Live Rooms</b><span>'+rooms.size+'</span></button>'+
+    '<button class="admin-card" onclick="adminCourses()"><b>Courses</b><span>'+courses.size+'</span></button>'+
+    '<button class="admin-card" onclick="adminTeachers()"><b>Teachers</b><span>'+teachers.size+'</span></button>'+
+    '</div>');
+}
+async function adminTeachers(){
+  const snap=await getDocs(query(collection(db,"users"),where("role","==","teacher")));
+  let h='<div class="course-grid">';
+  snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>👨‍🏫</span><div><h3>'+esc(x.name||"Teacher")+'</h3><p>'+esc(x.email||"")+'</p><p>Role: <b>teacher</b></p></div></article>';});
+  h+='</div>';
+  adminWrap("Teachers",h||'<div class="empty-card">No teachers found.</div>');
+}
 function shell(content,active="Home"){
   const admin=currentRole==="admin";
   const nav=admin
