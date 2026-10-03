@@ -27,45 +27,18 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function isFree(x){return x.access==="free" || x.price==="0" || x.price===0 || !x.price;}
 
 function login(){
-  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">GG</div><h1>Gayan Ganga</h1><p>Admin / Teacher Login</p><div class="muted" style="margin-bottom:14px">Windows app is only for Admin and Teacher.</div><input id="email" class="input" placeholder="Admin / Teacher Email"><input id="pass" type="password" class="input" placeholder="Password"><div id="msg" class="error"></div><button id="login" class="primary-btn">LOGIN</button><button id="activateTeacher" class="outline-btn" style="width:100%;margin-top:10px">ACTIVATE TEACHER ACCOUNT</button></div></div>';
+  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">GG</div><h1>Gayan Ganga</h1><p>Admin / Teacher Login</p><div class="muted" style="margin-bottom:14px">Windows app is only for Admin and Teacher.</div><input id="email" class="input" placeholder="Admin / Teacher Email"><input id="pass" type="password" class="input" placeholder="Password"><div id="msg" class="error"></div><button id="login" class="primary-btn">LOGIN</button></div></div>';
   document.getElementById("login").onclick=async()=>{
     const msg=document.getElementById("msg");
-    try{
-      msg.textContent="Please wait...";
-      await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("pass").value);
-    }catch(e){ msg.textContent=e.message||"Login failed"; }
+    try{msg.textContent="Please wait...";await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("pass").value);}
+    catch(e){msg.textContent=e.message||"Login failed";}
   };
-  document.getElementById("activateTeacher").onclick=showTeacherActivation;
 }
-async function showTeacherActivation(){
-  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">👨‍🏫</div><h1>Teacher Activation</h1><p>Admin द्वारा दिए गए invite email से account बनाएं</p><input id="tName" class="input" placeholder="Teacher Name"><input id="tEmail" class="input" placeholder="Invite Email"><input id="tPass" type="password" class="input" placeholder="New Password (6+ characters)"><div id="tMsg" class="error"></div><button id="activate" class="primary-btn">ACTIVATE ACCOUNT</button><button class="outline-btn" style="width:100%;margin-top:10px" onclick="login()">BACK TO LOGIN</button></div></div>';
-  document.getElementById("activate").onclick=activateTeacherAccount;
-}
-async function activateTeacherAccount(){
-  const name=document.getElementById("tName").value.trim(),email=document.getElementById("tEmail").value.trim().toLowerCase(),pass=document.getElementById("tPass").value,msg=document.getElementById("tMsg");
-  if(!name||!email||pass.length<6){msg.textContent="Name, invite email और कम से कम 6 character password जरूरी है.";return;}
-  try{
-    msg.textContent="Invite check हो रहा है...";
-    const invites=await getDocs(query(collection(db,"teacherInvites"),where("email","==",email),where("active","==",true)));
-    if(invites.empty){msg.textContent="इस email के लिए active Teacher Invite नहीं मिला.";return;}
-    const invite=invites.docs[0];
-    const cred=await createUserWithEmailAndPassword(auth,email,pass);
-    await setDoc(doc(db,"users",cred.user.uid),{name,email,role:"teacher",inviteId:invite.id,createdAt:new Date()});
-    await updateDoc(invite.ref,{teacherUid:cred.user.uid,activatedAt:new Date(),active:false});
-    msg.textContent="Teacher account बन गया. Dashboard खुल रहा है...";
-  }catch(e){msg.textContent=e.message||"Activation failed";}
-}
-
-async function loadAdminNotice(){
-  shell('<section class="hero-title"><h1>Admin Dashboard</h1><p>Gayan Ganga Coaching Center — Windows Admin Panel</p></section><div class="browse-grid admin-grid"><button class="browse-card" onclick="adminTeachers()"><span>👨‍🏫</span><b>Teachers</b></button><button class="browse-card" onclick="adminInvites()"><span>✉️</span><b>Teacher Invites</b></button><button class="browse-card" onclick="adminLiveRooms()"><span>🔴</span><b>Live Rooms</b></button><button class="browse-card" onclick="adminCourses()"><span>📚</span><b>Courses</b></button><button class="browse-card" onclick="adminTests()"><span>📝</span><b>Tests</b></button><button class="browse-card" onclick="adminRecordings()"><span>🎥</span><b>Recordings</b></button><button class="browse-card" onclick="adminUsers()"><span>👥</span><b>Users</b></button><button class="browse-card" onclick="signOut(auth)"><span>↪</span><b>Logout</b></button></div><div id="adminContent" class="admin-content"><div class="empty-card">ऊपर से कोई section चुनें।</div></div>','Admin');
-}
-function adminWrap(title,body){const el=document.getElementById("adminContent");if(!el)return;el.innerHTML='<div class="inner-head"><div><h2>'+esc(title)+'</h2><p>Admin management</p></div><button class="outline-btn" onclick="loadAdminNotice()">DASHBOARD</button></div>'+body;}
-async function adminTeachers(){const snap=await getDocs(query(collection(db,"users"),where("role","==","teacher")));let h='<div class="course-grid">';snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>👨‍🏫</span><div><h3>'+esc(x.name||"Teacher")+'</h3><p>'+esc(x.email||"")+'</p><small>UID: '+esc(d.id)+'</small></div></article>';});h+='</div>';adminWrap("Teachers",h||'<div class="empty-card">No teachers found.</div>');}
 async function adminInvites(){adminWrap("Create Teacher Invite",'<div class="form-card"><input id="invName" class="input" placeholder="Teacher name"><input id="invEmail" class="input" placeholder="Teacher email"><button class="primary-btn" onclick="createTeacherInvite()">CREATE INVITE</button><div id="adminMsg" class="muted"></div></div><div id="inviteList" class="course-grid">Loading...</div>');const snap=await getDocs(collection(db,"teacherInvites"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>✉️</span><div><h3>'+esc(x.name||"Teacher")+'</h3><p>'+esc(x.email||"")+'</p><p>Active: '+String(x.active!==false)+'</p></div></article>';});document.getElementById("inviteList").innerHTML=h||'<div class="empty-card">No invites.</div>';}
 async function createTeacherInvite(){const name=document.getElementById("invName")?.value.trim(),email=document.getElementById("invEmail")?.value.trim(),msg=document.getElementById("adminMsg");if(!name||!email){msg.textContent="Name और email दोनों भरें.";return;}try{await addDoc(collection(db,"teacherInvites"),{name,email,active:true,createdBy:auth.currentUser.uid,createdAt:new Date()});msg.textContent="Teacher invite created.";adminInvites();}catch(e){msg.textContent=e.message;}}
 async function adminLiveRooms(){adminWrap("Live Rooms",'<div class="form-card"><input id="roomTitle" class="input" placeholder="Live class title"><input id="roomTeacherEmail" class="input" placeholder="Teacher email"><input id="roomSchedule" class="input" placeholder="Schedule e.g. Monday 10:00 AM"><input id="roomPassword" class="input" placeholder="Room password"><button class="primary-btn" onclick="createLiveRoom()">CREATE LIVE ROOM</button><div id="adminMsg" class="muted"></div></div><div id="roomList" class="course-grid">Loading...</div>');const snap=await getDocs(collection(db,"liveRooms"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>🔴</span><div><h3>'+esc(x.roomTitle||"Live Room")+'</h3><p>'+esc(x.teacherEmail||"Unassigned")+'</p><p>'+esc(x.schedule||"")+' · '+esc(x.status||"scheduled")+'</p></div></article>';});document.getElementById("roomList").innerHTML=h||'<div class="empty-card">No live rooms.</div>';}
 async function createLiveRoom(){const title=document.getElementById("roomTitle")?.value.trim(),email=document.getElementById("roomTeacherEmail")?.value.trim(),schedule=document.getElementById("roomSchedule")?.value.trim(),password=document.getElementById("roomPassword")?.value,msg=document.getElementById("adminMsg");if(!title||!email||!password){msg.textContent="Title, teacher email और password जरूरी हैं.";return;}try{const teachers=await getDocs(query(collection(db,"users"),where("email","==",email),where("role","==","teacher")));let teacherName="",teacherUid="";teachers.forEach(d=>{teacherUid=d.id;teacherName=d.data().name||"";});if(!teacherUid){msg.textContent="इस email का active teacher account नहीं मिला.";return;}await addDoc(collection(db,"liveRooms"),{roomTitle:title,teacherUid,teacherName,teacherEmail:email,schedule,roomPassword:password,active:true,liveActive:false,status:"scheduled",createdBy:auth.currentUser.uid,createdAt:new Date()});msg.textContent="Live room created.";adminLiveRooms();}catch(e){msg.textContent=e.message;}}
-async async function adminCourses(){
+async function adminCourses(){
   const snap=await getDocs(collection(db,"courses"));
   const teachers=await getDocs(query(collection(db,"users"),where("role","==","teacher")));
   let opts='<option value="">-- Select Teacher --</option>';
@@ -88,7 +61,29 @@ async function createCourse(){
 }
 async function adminTests(){const snap=await getDocs(collection(db,"tests"));let h='<div class="course-grid">';snap.forEach(d=>{const x=d.data();h+='<article class="test-card"><span>📝</span><h3>'+esc(x.title||"Test")+'</h3><p>'+esc(x.duration||0)+' minutes</p><small>ID: '+esc(d.id)+'</small></article>';});h+='</div>';adminWrap("Tests",h||'<div class="empty-card">No tests.</div>');}
 async function adminRecordings(){const snap=await getDocs(collection(db,"recordings"));let h='<div class="course-grid">';snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>🎥</span><div><h3>'+esc(x.title||"Recording")+'</h3><p>'+esc(x.status||"")+'</p>'+(x.url?'<a class="outline-btn" href="'+esc(x.url)+'" target="_blank">OPEN</a>':"")+'</div></article>';});h+='</div>';adminWrap("Recordings",h||'<div class="empty-card">No recordings.</div>');}
-async function adminUsers(){const snap=await getDocs(collection(db,"users"));let h='<div class="course-grid">';snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>👤</span><div><h3>'+esc(x.name||"User")+'</h3><p>'+esc(x.email||"")+'</p><p>Role: <b>'+esc(x.role||"")+'</b></p></div></article>';});h+='</div>';adminWrap("Users",h||'<div class="empty-card">No users.</div>');}
+async function adminUsers(){
+  const snap=await getDocs(collection(db,"users"));
+  let h='<div class="form-card"><input id="userSearch" class="input" placeholder="Student name या email से खोजें..." oninput="filterAdminUsers()"><div class="muted">Existing Student को ही Teacher बनाया जाएगा। नया account नहीं बनेगा।</div></div><div id="adminUserList" class="course-grid">';
+  snap.forEach(d=>{const x=d.data();h+='<article class="mini-card admin-user-card" data-search="'+esc(((x.name||"")+" "+(x.email||"")).toLowerCase())+'"><span>👤</span><div><h3>'+esc(x.name||"User")+'</h3><p>'+esc(x.email||"")+'</p><p>Role: <b>'+esc(x.role||"")+'</b></p>'+(x.role==="student"?'<button class="primary-btn" onclick="promoteExistingUserToTeacher(\''+d.id+'\')">INVITE AS TEACHER</button>':x.role==="teacher"?'<span class="tag">TEACHER</span>':"")+'</div></article>';});
+  h+='</div>';adminWrap("Users",h||'<div class="empty-card">No users.</div>');
+}
+function filterAdminUsers(){
+  const q=(document.getElementById("userSearch")?.value||"").toLowerCase().trim();
+  document.querySelectorAll(".admin-user-card").forEach(el=>{el.style.display=!q||el.dataset.search.includes(q)?"":"none";});
+}
+async function promoteExistingUserToTeacher(uid){
+  const ref=doc(db,"users",uid); const snap=await getDoc(ref);
+  if(!snap.exists()){alert("User नहीं मिला.");return;}
+  const x=snap.data();
+  if(x.role!=="student"){alert("यह user Student नहीं है.");return;}
+  if(!confirm((x.name||x.email||"Student")+" को Teacher बनाना है?\nइसका existing email/password वही रहेगा."))return;
+  try{
+    await updateDoc(ref,{role:"teacher",teacherInvited:true,teacherPromotedAt:new Date(),teacherPromotedBy:auth.currentUser.uid});
+    await addDoc(collection(db,"teacherInvites"),{name:x.name||"",email:x.email||"",active:false,type:"existing-user-promoted",teacherUid:uid,createdBy:auth.currentUser.uid,createdAt:new Date(),activatedAt:new Date()});
+    alert("Teacher बना दिया गया. अब यही email/password Windows app में Teacher Login के लिए काम करेगा.");
+    adminUsers();
+  }catch(e){alert("Teacher update failed: "+(e.message||e));}
+}
 async function loadTeacherDashboard(){
   shell('<section class="hero-title"><h1>Teacher Dashboard</h1><p>Assigned live classrooms</p></section><div id="teacherRooms" class="course-grid">Loading...</div>','Live');
   const el=document.getElementById("teacherRooms");
@@ -237,7 +232,7 @@ async function openSubject(cid,sid,title){shell('<div class="inner-head"><button
 async function loadTests(){shell('<div class="inner-head"><button class="back-btn" onclick="loadHome()">←</button><div><h1>Free Tests</h1><p>Practice and check your preparation</p></div></div><div id="allTests" class="course-grid">Loading...</div>');const el=document.getElementById("allTests");const snap=await getDocs(collection(db,"tests"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="test-card"><span>📝</span><h3>'+esc(x.title||"Test")+'</h3><p>'+esc(x.description||"")+'</p><button class="primary-btn" onclick="openTest(\''+d.id+'\')">START TEST</button></article>';});el.innerHTML=h||'<div class="empty-card">अभी कोई test उपलब्ध नहीं है।</div>';}
 async function loadNotes(){shell('<div class="inner-head"><button class="back-btn" onclick="loadHome()">←</button><div><h1>PDF / Notes</h1><p>Study material</p></div></div><div id="allNotes" class="course-grid">Loading...</div>');const el=document.getElementById("allNotes");const snap=await getDocs(collection(db,"notes"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>📄</span><div><h3>'+esc(x.title||"Notes")+'</h3><p>'+esc(x.description||"")+'</p></div>'+(x.downloadUrl?'<a class="outline-btn" href="'+esc(x.downloadUrl)+'" target="_blank">OPEN PDF</a>':"")+'</article>';});el.innerHTML=h||'<div class="empty-card">अभी notes उपलब्ध नहीं हैं।</div>';}
 async function openTest(testId){const qSnap=await getDocs(collection(db,"tests",testId,"questions"));let qs=[];qSnap.forEach(d=>qs.push(d.data()));let i=0,score=0;function render(){if(i>=qs.length){shell('<div class="result-card"><div class="result-icon">✓</div><h1>Test Completed</h1><h2>'+score+' / '+qs.length+'</h2><p>Your test has been completed.</p><button class="primary-btn" onclick="loadHome()">BACK HOME</button></div>');return;}const q=qs[i];shell('<div class="test-screen"><div class="test-top"><button class="back-btn" onclick="loadHome()">←</button><span>Question '+(i+1)+' of '+qs.length+'</span></div><div class="question-card"><h2>'+esc(q.question)+'</h2><label><input type="radio" name="a" value="1"> '+esc(q.option1)+'</label><label><input type="radio" name="a" value="2"> '+esc(q.option2)+'</label><label><input type="radio" name="a" value="3"> '+esc(q.option3)+'</label><label><input type="radio" name="a" value="4"> '+esc(q.option4)+'</label><button id="next" class="primary-btn">'+(i===qs.length-1?"SUBMIT":"NEXT")+'</button></div></div>');document.getElementById("next").onclick=()=>{const a=document.querySelector('input[name="a"]:checked');if(!a)return;if(a.value===String(q.answer||q.correctAnswer))score++;i++;render();};}render();}
-window.showTeacherActivation=showTeacherActivation;window.activateTeacherAccount=activateTeacherAccount;window.loadAdminNotice=loadAdminNotice;window.adminTeachers=adminTeachers;window.adminInvites=adminInvites;window.createTeacherInvite=createTeacherInvite;window.adminLiveRooms=adminLiveRooms;window.createLiveRoom=createLiveRoom;window.adminCourses=adminCourses;window.createCourse=createCourse;window.adminTests=adminTests;window.adminRecordings=adminRecordings;window.adminUsers=adminUsers;window.loadHome=loadHome;window.openCourse=openCourse;window.openSubject=openSubject;window.openTest=openTest;window.loadTests=loadTests;window.loadNotes=loadNotes;window.showLive=showLive;window.showProfile=showProfile;window.showMore=showMore;window.showMessage=showMessage;window.toggleTheme=toggleTheme;window.filterCourses=filterCourses;window.filterBrowse=filterBrowse;window.loadCourseLive=loadCourseLive;window.loadCourseNotes=loadCourseNotes;window.loadSubjects=loadSubjects;
+window.filterAdminUsers=filterAdminUsers;window.promoteExistingUserToTeacher=promoteExistingUserToTeacher;window.loadAdminNotice=loadAdminNotice;window.adminTeachers=adminTeachers;window.adminInvites=adminInvites;window.createTeacherInvite=createTeacherInvite;window.adminLiveRooms=adminLiveRooms;window.createLiveRoom=createLiveRoom;window.adminCourses=adminCourses;window.createCourse=createCourse;window.adminTests=adminTests;window.adminRecordings=adminRecordings;window.adminUsers=adminUsers;window.loadHome=loadHome;window.openCourse=openCourse;window.openSubject=openSubject;window.openTest=openTest;window.loadTests=loadTests;window.loadNotes=loadNotes;window.showLive=showLive;window.showProfile=showProfile;window.showMore=showMore;window.showMessage=showMessage;window.toggleTheme=toggleTheme;window.filterCourses=filterCourses;window.filterBrowse=filterBrowse;window.loadCourseLive=loadCourseLive;window.loadCourseNotes=loadCourseNotes;window.loadSubjects=loadSubjects;
 function boot(){
   try{
     login();
