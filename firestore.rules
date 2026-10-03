@@ -1,0 +1,85 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userDoc() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function isAdmin() { return signedIn() && exists(userDoc()) && get(userDoc()).data.role == "admin"; }
+    function isTeacher() { return signedIn() && exists(userDoc()) && get(userDoc()).data.role == "teacher"; }
+    function isStudent() { return signedIn() && exists(userDoc()) && get(userDoc()).data.role == "student"; }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+      match /testResults/{resultId} {
+        allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+        allow create: if signedIn() && request.auth.uid == uid;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /teacherInvites/{inviteId} {
+      allow create, update, delete: if isAdmin();
+      allow read: if isAdmin() || (signedIn() && resource.data.email == request.auth.token.email);
+    }
+
+    match /courses/{courseId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+      match /subjects/{subjectId} {
+        allow read: if signedIn();
+        allow create, update, delete: if isAdmin();
+        match /lessons/{lessonId} {
+          allow read: if signedIn();
+          allow create, update, delete: if isAdmin();
+        }
+      }
+    }
+
+    match /notes/{noteId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /tests/{testId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+      match /questions/{questionId} {
+        allow read: if signedIn();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    match /liveRooms/{roomId} {
+      allow create: if isAdmin();
+      allow read: if isAdmin()
+        || (isTeacher() && resource.data.teacherUid == request.auth.uid)
+        || (isStudent() && resource.data.active == true);
+      allow update: if isAdmin()
+        || (isTeacher() && resource.data.teacherUid == request.auth.uid && request.resource.data.teacherUid == request.auth.uid);
+      allow delete: if isAdmin();
+
+      match /participants/{participantId} {
+        allow read, write: if signedIn();
+        match /teacherCandidates/{candidateId} { allow read, write: if signedIn(); }
+        match /studentCandidates/{candidateId} { allow read, write: if signedIn(); }
+      }
+    }
+
+    match /recordings/{recordingId} {
+      allow read: if signedIn();
+      allow create: if isAdmin() || (isTeacher() && request.resource.data.teacherUid == request.auth.uid);
+      allow update, delete: if isAdmin() || (isTeacher() && resource.data.teacherUid == request.auth.uid);
+    }
+
+    match /paymentRequests/{requestId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
