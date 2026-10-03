@@ -109,16 +109,26 @@ async function loadTeacherDashboard(){
 }
 async function openTeacherLive(roomId){
   const s=await getDoc(doc(db,"liveRooms",roomId)); if(!s.exists()){alert("Live room नहीं मिला");return;}
-  const x=s.data(); const pw=prompt("Class Room Password"); if(pw===null)return;
-  if(pw!==String(x.roomPassword||"")){alert("Wrong class room password");return;}
+  const x=s.data();
   currentLiveRoom=roomId;
+  shell('<section class="hero-title"><h1>🔐 Join Live Classroom</h1><p>'+esc(x.roomTitle||"Live Class")+' · '+esc(x.schedule||"")+'</p></section><div class="form-card" style="max-width:520px;margin:30px auto"><div class="big-icon">🔒</div><h2>Teacher Room Access</h2><p class="muted">इस Live Room को शुरू करने के लिए Admin का दिया हुआ room password डालें।</p><input id="roomPwInput" class="input" type="password" placeholder="Room Password"><div id="roomPwMsg" class="error"></div><button id="enterRoomBtn" class="primary-btn" style="width:100%">ENTER LIVE ROOM</button><button class="outline-btn" style="width:100%;margin-top:10px" onclick="loadTeacherDashboard()">BACK</button></div>','Live');
+  document.getElementById("enterRoomBtn").onclick=async()=>{
+    const pw=document.getElementById("roomPwInput").value;
+    const msg=document.getElementById("roomPwMsg");
+    if(!pw){msg.textContent="Room password डालें.";return;}
+    if(pw!==String(x.roomPassword||"")){msg.textContent="Wrong room password.";return;}
+    await prepareTeacherLiveRoom(x);
+  };
+}
+async function prepareTeacherLiveRoom(x){
   shell('<section class="hero-title"><h1>🔴 '+esc(x.roomTitle||"Live Class")+'</h1><p>'+esc(x.schedule||"")+'</p></section><div class="live-layout"><div class="live-main"><video id="localVideo" autoplay muted playsinline></video><div class="live-controls"><button id="startBtn" class="primary-btn">START LIVE</button><button id="endBtn" class="danger-btn" disabled>END LIVE</button></div><div id="liveMsg" class="muted">Camera और microphone allow करें।</div></div><div class="live-side"><h3>Students</h3><div id="count">0 connected</div></div></div>','Live');
   document.getElementById("startBtn").onclick=startTeacherLive;
   document.getElementById("endBtn").onclick=stopTeacherLive;
   try{
     liveStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
     document.getElementById("localVideo").srcObject=liveStream;
-  }catch(e){document.getElementById("liveMsg").textContent=e.message;}
+    document.getElementById("liveMsg").textContent="Camera और microphone ready हैं. START LIVE दबाएँ.";
+  }catch(e){document.getElementById("liveMsg").textContent="Camera/Microphone permission error: "+e.message;}
 }
 async function startTeacherLive(){
   if(!liveStream||!currentLiveRoom)return;
@@ -202,13 +212,15 @@ async function loadAdminNotice(){
     getDocs(collection(db,"users"))
   ]);
   adminWrap("Admin Dashboard",
+    '<div class="admin-welcome"><div><span class="tag">ADMIN CONTROL CENTER</span><h2>Gayan Ganga Management</h2><p>Teachers, live classes and courses एक ही जगह से manage करें.</p></div><div class="admin-status">● System Online</div></div>'+
     '<div class="admin-grid">'+
-    '<button class="admin-card" onclick="adminUsers()"><b>Users</b><span>'+users.size+'</span></button>'+
-    '<button class="admin-card" onclick="adminInvites()"><b>Teacher Invites</b><span>Existing Students</span></button>'+
-    '<button class="admin-card" onclick="adminLiveRooms()"><b>Live Rooms</b><span>'+rooms.size+'</span></button>'+
-    '<button class="admin-card" onclick="adminCourses()"><b>Courses</b><span>'+courses.size+'</span></button>'+
-    '<button class="admin-card" onclick="adminTeachers()"><b>Teachers</b><span>'+teachers.size+'</span></button>'+
-    '</div>');
+    '<button class="admin-card admin-blue" onclick="adminUsers()"><span class="admin-icon">👥</span><b>Users</b><small>'+users.size+' total users</small></button>'+
+    '<button class="admin-card admin-green" onclick="adminInvites()"><span class="admin-icon">👨‍🏫</span><b>Teacher Management</b><small>Existing Student → Teacher</small></button>'+
+    '<button class="admin-card admin-red" onclick="adminLiveRooms()"><span class="admin-icon">🔴</span><b>Live Rooms</b><small>'+rooms.size+' rooms</small></button>'+
+    '<button class="admin-card admin-purple" onclick="adminCourses()"><span class="admin-icon">📚</span><b>Courses</b><small>'+courses.size+' courses</small></button>'+
+    '<button class="admin-card admin-orange" onclick="adminTeachers()"><span class="admin-icon">🎓</span><b>Teachers</b><small>'+teachers.size+' active teachers</small></button>'+
+    '</div>'+
+    '<div class="admin-quick"><h3>Admin Workflow</h3><div class="workflow"><span>1. Student User</span><b>→</b><span>2. Make Teacher</span><b>→</b><span>3. Create Live Room</span><b>→</b><span>4. Teacher Starts Live</span></div></div>');
 }
 async function adminTeachers(){
   const snap=await getDocs(query(collection(db,"users"),where("role","==","teacher")));
