@@ -1003,7 +1003,7 @@ public class MainActivity extends Activity {
                 if(answer instanceof Map && studentPeer.getRemoteDescription()==null){
                     Map<?,?> am=(Map<?,?>)answer;
                     String type=String.valueOf(am.get("type")); String sdp=String.valueOf(am.get("sdp"));
-                    studentPeer.setRemoteDescription(new SessionDescription(SessionDescription.Type.fromCanonicalForm(type),sdp),new SimpleSdpObserver(){public void onSetSuccess(){runOnUiThread(()->status.setText("LIVE — Teacher connected."));}});
+                    studentPeer.setRemoteDescription(new SimpleSdpObserver(){public void onSetSuccess(){runOnUiThread(()->status.setText("LIVE — Teacher connected."));}},new SessionDescription(SessionDescription.Type.fromCanonicalForm(type),sdp));
                 }
             });
             studentPeer.createOffer(new SimpleSdpObserver(){
