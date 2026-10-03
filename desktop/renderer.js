@@ -1,5 +1,5 @@
 const { initializeApp } = require("firebase/app");
-const { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } = require("firebase/auth");
+const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = require("firebase/auth");
 const { getFirestore, collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, onSnapshot, query, where } = require("firebase/firestore");
 const { getStorage, ref: storageRef, uploadBytes, getDownloadURL } = require("firebase/storage");
 const cfg = require("./firebase-config");
@@ -27,16 +27,33 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function isFree(x){return x.access==="free" || x.price==="0" || x.price===0 || !x.price;}
 
 function login(){
-  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">GG</div><h1>Gayan Ganga</h1><p>Admin / Teacher Login</p><div class="muted" style="margin-bottom:14px">Windows app is only for Admin and Teacher.</div><input id="email" class="input" placeholder="Admin / Teacher Email"><input id="pass" type="password" class="input" placeholder="Password"><div id="msg" class="error"></div><button id="login" class="primary-btn">LOGIN</button></div></div>';
+  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">GG</div><h1>Gayan Ganga</h1><p>Admin / Teacher Login</p><div class="muted" style="margin-bottom:14px">Windows app is only for Admin and Teacher.</div><input id="email" class="input" placeholder="Admin / Teacher Email"><input id="pass" type="password" class="input" placeholder="Password"><div id="msg" class="error"></div><button id="login" class="primary-btn">LOGIN</button><button id="activateTeacher" class="outline-btn" style="width:100%;margin-top:10px">ACTIVATE TEACHER ACCOUNT</button></div></div>';
   document.getElementById("login").onclick=async()=>{
     const msg=document.getElementById("msg");
     try{
       msg.textContent="Please wait...";
       await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("pass").value);
-    }catch(e){
-      msg.textContent=e.message||"Login failed";
-    }
+    }catch(e){ msg.textContent=e.message||"Login failed"; }
   };
+  document.getElementById("activateTeacher").onclick=showTeacherActivation;
+}
+async function showTeacherActivation(){
+  root.innerHTML='<div class="login-page"><div class="login-card"><div class="login-logo">👨‍🏫</div><h1>Teacher Activation</h1><p>Admin द्वारा दिए गए invite email से account बनाएं</p><input id="tName" class="input" placeholder="Teacher Name"><input id="tEmail" class="input" placeholder="Invite Email"><input id="tPass" type="password" class="input" placeholder="New Password (6+ characters)"><div id="tMsg" class="error"></div><button id="activate" class="primary-btn">ACTIVATE ACCOUNT</button><button class="outline-btn" style="width:100%;margin-top:10px" onclick="login()">BACK TO LOGIN</button></div></div>';
+  document.getElementById("activate").onclick=activateTeacherAccount;
+}
+async function activateTeacherAccount(){
+  const name=document.getElementById("tName").value.trim(),email=document.getElementById("tEmail").value.trim().toLowerCase(),pass=document.getElementById("tPass").value,msg=document.getElementById("tMsg");
+  if(!name||!email||pass.length<6){msg.textContent="Name, invite email और कम से कम 6 character password जरूरी है.";return;}
+  try{
+    msg.textContent="Invite check हो रहा है...";
+    const invites=await getDocs(query(collection(db,"teacherInvites"),where("email","==",email),where("active","==",true)));
+    if(invites.empty){msg.textContent="इस email के लिए active Teacher Invite नहीं मिला.";return;}
+    const invite=invites.docs[0];
+    const cred=await createUserWithEmailAndPassword(auth,email,pass);
+    await setDoc(doc(db,"users",cred.user.uid),{name,email,role:"teacher",inviteId:invite.id,createdAt:new Date()});
+    await updateDoc(invite.ref,{teacherUid:cred.user.uid,activatedAt:new Date(),active:false});
+    msg.textContent="Teacher account बन गया. Dashboard खुल रहा है...";
+  }catch(e){msg.textContent=e.message||"Activation failed";}
 }
 
 async function loadAdminNotice(){
@@ -201,7 +218,7 @@ async function openSubject(cid,sid,title){shell('<div class="inner-head"><button
 async function loadTests(){shell('<div class="inner-head"><button class="back-btn" onclick="loadHome()">←</button><div><h1>Free Tests</h1><p>Practice and check your preparation</p></div></div><div id="allTests" class="course-grid">Loading...</div>');const el=document.getElementById("allTests");const snap=await getDocs(collection(db,"tests"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="test-card"><span>📝</span><h3>'+esc(x.title||"Test")+'</h3><p>'+esc(x.description||"")+'</p><button class="primary-btn" onclick="openTest(\''+d.id+'\')">START TEST</button></article>';});el.innerHTML=h||'<div class="empty-card">अभी कोई test उपलब्ध नहीं है।</div>';}
 async function loadNotes(){shell('<div class="inner-head"><button class="back-btn" onclick="loadHome()">←</button><div><h1>PDF / Notes</h1><p>Study material</p></div></div><div id="allNotes" class="course-grid">Loading...</div>');const el=document.getElementById("allNotes");const snap=await getDocs(collection(db,"notes"));let h="";snap.forEach(d=>{const x=d.data();h+='<article class="mini-card"><span>📄</span><div><h3>'+esc(x.title||"Notes")+'</h3><p>'+esc(x.description||"")+'</p></div>'+(x.downloadUrl?'<a class="outline-btn" href="'+esc(x.downloadUrl)+'" target="_blank">OPEN PDF</a>':"")+'</article>';});el.innerHTML=h||'<div class="empty-card">अभी notes उपलब्ध नहीं हैं।</div>';}
 async function openTest(testId){const qSnap=await getDocs(collection(db,"tests",testId,"questions"));let qs=[];qSnap.forEach(d=>qs.push(d.data()));let i=0,score=0;function render(){if(i>=qs.length){shell('<div class="result-card"><div class="result-icon">✓</div><h1>Test Completed</h1><h2>'+score+' / '+qs.length+'</h2><p>Your test has been completed.</p><button class="primary-btn" onclick="loadHome()">BACK HOME</button></div>');return;}const q=qs[i];shell('<div class="test-screen"><div class="test-top"><button class="back-btn" onclick="loadHome()">←</button><span>Question '+(i+1)+' of '+qs.length+'</span></div><div class="question-card"><h2>'+esc(q.question)+'</h2><label><input type="radio" name="a" value="1"> '+esc(q.option1)+'</label><label><input type="radio" name="a" value="2"> '+esc(q.option2)+'</label><label><input type="radio" name="a" value="3"> '+esc(q.option3)+'</label><label><input type="radio" name="a" value="4"> '+esc(q.option4)+'</label><button id="next" class="primary-btn">'+(i===qs.length-1?"SUBMIT":"NEXT")+'</button></div></div>');document.getElementById("next").onclick=()=>{const a=document.querySelector('input[name="a"]:checked');if(!a)return;if(a.value===String(q.answer||q.correctAnswer))score++;i++;render();};}render();}
-window.loadAdminNotice=loadAdminNotice;window.adminTeachers=adminTeachers;window.adminInvites=adminInvites;window.createTeacherInvite=createTeacherInvite;window.adminLiveRooms=adminLiveRooms;window.createLiveRoom=createLiveRoom;window.adminCourses=adminCourses;window.createCourse=createCourse;window.adminTests=adminTests;window.adminRecordings=adminRecordings;window.adminUsers=adminUsers;window.loadHome=loadHome;window.openCourse=openCourse;window.openSubject=openSubject;window.openTest=openTest;window.loadTests=loadTests;window.loadNotes=loadNotes;window.showLive=showLive;window.showProfile=showProfile;window.showMore=showMore;window.showMessage=showMessage;window.toggleTheme=toggleTheme;window.filterCourses=filterCourses;window.filterBrowse=filterBrowse;window.loadCourseLive=loadCourseLive;window.loadCourseNotes=loadCourseNotes;window.loadSubjects=loadSubjects;
+window.showTeacherActivation=showTeacherActivation;window.activateTeacherAccount=activateTeacherAccount;window.loadAdminNotice=loadAdminNotice;window.adminTeachers=adminTeachers;window.adminInvites=adminInvites;window.createTeacherInvite=createTeacherInvite;window.adminLiveRooms=adminLiveRooms;window.createLiveRoom=createLiveRoom;window.adminCourses=adminCourses;window.createCourse=createCourse;window.adminTests=adminTests;window.adminRecordings=adminRecordings;window.adminUsers=adminUsers;window.loadHome=loadHome;window.openCourse=openCourse;window.openSubject=openSubject;window.openTest=openTest;window.loadTests=loadTests;window.loadNotes=loadNotes;window.showLive=showLive;window.showProfile=showProfile;window.showMore=showMore;window.showMessage=showMessage;window.toggleTheme=toggleTheme;window.filterCourses=filterCourses;window.filterBrowse=filterBrowse;window.loadCourseLive=loadCourseLive;window.loadCourseNotes=loadCourseNotes;window.loadSubjects=loadSubjects;
 function boot(){
   try{
     login();
