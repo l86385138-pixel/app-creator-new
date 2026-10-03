@@ -97,7 +97,7 @@ async function loadTeacherDashboard(){
   shell('<section class="hero-title"><h1>Teacher Dashboard</h1><p>Assigned live classrooms</p></section><div id="teacherRooms" class="course-grid">Loading...</div>','Live');
   const el=document.getElementById("teacherRooms");
   try{
-    const q=query(collection(db,"liveRooms"),where("teacherEmail","==",auth.currentUser.email));
+    const q=query(collection(db,"liveRooms"),where("teacherUid","==",auth.currentUser.uid));
     const s=await getDocs(q); let h="";
     s.forEach(d=>{
       const x=d.data();
