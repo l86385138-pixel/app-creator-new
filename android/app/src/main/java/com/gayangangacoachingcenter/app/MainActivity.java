@@ -7,6 +7,7 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.ImageView;
@@ -22,6 +23,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 import com.bumptech.glide.Glide;
@@ -29,10 +31,20 @@ import com.bumptech.glide.Glide;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.webrtc.*;
+
 public class MainActivity extends Activity {
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private FirebaseStorage storage;
+    private PeerConnectionFactory peerFactory;
+    private PeerConnection studentPeer;
+    private SurfaceViewRenderer liveRenderer;
+    private EglBase eglBase;
+    private ListenerRegistration liveParticipantListener;
+    private ListenerRegistration liveTeacherCandidatesListener;
+    private String liveRoomId;
+    private String liveParticipantId;
     private int dp(float v){ return (int)(v * getResources().getDisplayMetrics().density + 0.5f); }
 
     private TextView tv(String text,float size,int color,boolean bold){
@@ -236,9 +248,12 @@ public class MainActivity extends Activity {
         db.collection("users").document(u.getUid()).get().addOnSuccessListener(doc -> {
             String name=doc.exists()?doc.getString("name"):null;
             if(name==null || name.trim().isEmpty()) name=u.getEmail()==null?"Student":u.getEmail().split("@")[0];
-            if(doc.exists() && "admin".equals(doc.getString("role"))) setContentView(adminHome(name));
-            else if(doc.exists() && "teacher".equals(doc.getString("role"))) setContentView(teacherHome(name));
-            else setContentView(home(name));
+            if(doc.exists() && "student".equals(doc.getString("role"))) setContentView(home(name));
+            else {
+                auth.signOut();
+                Toast.makeText(this, "इस Android app में केवल Student login कर सकता है.", Toast.LENGTH_LONG).show();
+                setContentView(authScreen(false));
+            }
         }).addOnFailureListener(e -> setContentView(home(u.getEmail()==null?"Student":u.getEmail().split("@")[0])));
     }
 
@@ -843,6 +858,9 @@ public class MainActivity extends Activity {
         LinearLayout content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(14),dp(14),dp(14),dp(14));
         TextView hello=tv("Hello, "+name,24,Color.rgb(35,35,35),false); hello.setPadding(dp(6),dp(4),0,dp(16));
         content.addView(hello,new LinearLayout.LayoutParams(-1,dp(58)));
+        TextView live=button("🔴  LIVE CLASSES");
+        content.addView(live,new LinearLayout.LayoutParams(-1,dp(58)));
+        live.setOnClickListener(v -> liveClassesScreen());
         TextView banner=tv("GAYAN GANGA\nCOACHING CENTER\n\nLive Classes  •  Mock Test  •  Notes  •  Experienced Teachers",19,Color.WHITE,true);
         banner.setGravity(Gravity.CENTER); banner.setBackground(bg(Color.rgb(210,55,55),8));
         content.addView(banner,new LinearLayout.LayoutParams(-1,dp(180)));
@@ -873,4 +891,149 @@ public class MainActivity extends Activity {
         logout.setOnClickListener(v -> { auth.signOut(); setContentView(authScreen(false)); });
         setContentView(root);
     }
+    private void initWebRtc(){
+        if(peerFactory!=null)return;
+        PeerConnectionFactory.initialize(
+            PeerConnectionFactory.InitializationOptions.builder(getApplicationContext()).createInitializationOptions()
+        );
+        eglBase=EglBase.create();
+        peerFactory=PeerConnectionFactory.builder().setVideoDecoderFactory(
+            new DefaultVideoDecoderFactory(eglBase.getEglBaseContext())
+        ).setVideoEncoderFactory(
+            new DefaultVideoEncoderFactory(eglBase.getEglBaseContext(), true, true)
+        ).createPeerConnectionFactory();
+    }
+
+    private void liveClassesScreen(){
+        initWebRtc();
+        LinearLayout root=baseScreen("🔴 Live Classes");
+        TextView info=tv("अभी चल रही Live Classes",18,Color.DKGRAY,true);
+        root.addView(info,new LinearLayout.LayoutParams(-1,dp(55)));
+        LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL);
+        root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+        db.collection("liveRooms").whereEqualTo("liveActive",true).get().addOnSuccessListener(res->{
+            if(res.isEmpty()){list.addView(centerMessage("अभी कोई Live Class नहीं चल रही है."));return;}
+            for(QueryDocumentSnapshot d:res){
+                String title=d.getString("roomTitle"); if(title==null)title="Live Class";
+                String schedule=d.getString("schedule"); if(schedule==null)schedule="";
+                LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(16),dp(14),dp(16),dp(14)); card.setBackground(bg(Color.WHITE,12));
+                TextView t=tv("🔴 "+title,18,Color.DKGRAY,true); card.addView(t,new LinearLayout.LayoutParams(-1,dp(45)));
+                card.addView(tv(schedule,14,Color.DKGRAY,false),new LinearLayout.LayoutParams(-1,dp(35)));
+                TextView join=button("JOIN LIVE CLASS"); card.addView(join,new LinearLayout.LayoutParams(-1,dp(52)));
+                String roomId=d.getId(); join.setOnClickListener(v->joinLiveAsStudent(roomId));
+                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(145)); cp.setMargins(dp(12),dp(8),dp(12),dp(8)); list.addView(card,cp);
+            }
+        }).addOnFailureListener(e->list.addView(centerMessage("Live classes load नहीं हुईं: "+error(e))));
+        TextView back=button("BACK");
+        root.addView(back,new LinearLayout.LayoutParams(-1,dp(52))); back.setOnClickListener(v->loadHome());
+        setContentView(root);
+    }
+
+    private void joinLiveAsStudent(String roomId){
+        db.collection("liveRooms").document(roomId).get().addOnSuccessListener(room->{
+            if(!room.exists() || !Boolean.TRUE.equals(room.getBoolean("liveActive"))){toast("Live class अभी active नहीं है.");return;}
+            liveRoomId=roomId;
+            LinearLayout root=baseScreen("🔴 "+(room.getString("roomTitle")==null?"Live Class":room.getString("roomTitle")));
+            liveRenderer=new SurfaceViewRenderer(this);
+            liveRenderer.init(eglBase.getEglBaseContext(),null);
+            liveRenderer.setEnableHardwareScaler(true);
+            liveRenderer.setMirror(false);
+            root.addView(liveRenderer,new LinearLayout.LayoutParams(-1,0,1));
+            TextView status=tv("Teacher से connect हो रहा है...",16,Color.DKGRAY,false); status.setPadding(dp(14),dp(10),dp(14),dp(10));
+            root.addView(status,new LinearLayout.LayoutParams(-1,dp(55)));
+            TextView leave=button("LEAVE LIVE CLASS"); root.addView(leave,new LinearLayout.LayoutParams(-1,dp(55)));
+            leave.setOnClickListener(v->leaveStudentLive());
+            setContentView(root);
+            startStudentPeer(roomId,status);
+        }).addOnFailureListener(e->toast("Live class load failed: "+error(e)));
+    }
+
+    private void startStudentPeer(String roomId, TextView status){
+        initWebRtc();
+        PeerConnection.RTCConfiguration cfg=new PeerConnection.RTCConfiguration(
+            java.util.Collections.singletonList(new PeerConnection.IceServer("stun:stun.l.google.com:19302"))
+        );
+        PeerConnection.RTCConfiguration finalCfg=cfg;
+        PeerConnection.Observer obs=new PeerConnection.Observer(){
+            public void onSignalingChange(PeerConnection.SignalingState s){}
+            public void onIceConnectionChange(PeerConnection.IceConnectionState s){
+                if(s==PeerConnection.IceConnectionState.CONNECTED || s==PeerConnection.IceConnectionState.COMPLETED) runOnUiThread(()->status.setText("LIVE — Teacher connected."));
+                if(s==PeerConnection.IceConnectionState.FAILED) runOnUiThread(()->status.setText("Connection failed. फिर से JOIN करें."));
+            }
+            public void onIceConnectionReceivingChange(boolean b){}
+            public void onIceGatheringChange(PeerConnection.IceGatheringState s){}
+            public void onIceCandidate(IceCandidate c){
+                Map<String,Object> m=new HashMap<>();
+                m.put("sdpMid",c.sdpMid); m.put("sdpMLineIndex",c.sdpMLineIndex); m.put("candidate",c.sdp);
+                db.collection("liveRooms").document(liveRoomId).collection("participants").document(liveParticipantId).collection("studentCandidates").add(m);
+            }
+            public void onIceCandidatesRemoved(IceCandidate[] c){}
+            public void onAddStream(MediaStream s){}
+            public void onRemoveStream(MediaStream s){}
+            public void onDataChannel(DataChannel d){}
+            public void onRenegotiationNeeded(){}
+            public void onAddTrack(RtpReceiver r, MediaStream[] streams){
+                if(r.track() instanceof VideoTrack) ((VideoTrack)r.track()).addSink(liveRenderer);
+            }
+            public void onConnectionChange(PeerConnection.PeerConnectionState s){}
+            public void onStandardizedIceConnectionChange(PeerConnection.IceConnectionState s){}
+            public void onSelectedCandidatePairChanged(CandidatePairChangeEvent e){}
+            public void onIceConnectionReceivingChange(boolean b, boolean c){}
+        };
+        studentPeer=peerFactory.createPeerConnection(finalCfg,obs);
+        if(studentPeer==null){status.setText("WebRTC initialize नहीं हुआ.");return;}
+        studentPeer.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO,new RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY));
+        studentPeer.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO,new RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY));
+        Map<String,Object> participant=new HashMap<>();
+        FirebaseUser u=auth.getCurrentUser();
+        participant.put("uid",u==null?"":u.getUid()); participant.put("email",u==null?"":u.getEmail()); participant.put("status","joining"); participant.put("joinedAt",new com.google.firebase.Timestamp(new java.util.Date()));
+        db.collection("liveRooms").document(roomId).collection("participants").add(participant).addOnSuccessListener(ref->{
+            liveParticipantId=ref.getId();
+            liveTeacherCandidatesListener=db.collection("liveRooms").document(roomId).collection("participants").document(liveParticipantId).collection("teacherCandidates").addSnapshotListener((snap,e)->{
+                if(e!=null||snap==null||studentPeer==null)return;
+                for(com.google.firebase.firestore.DocumentChange ch:snap.getDocumentChanges()) if(ch.getType()==com.google.firebase.firestore.DocumentChange.Type.ADDED){
+                    Map<String,Object> m=ch.getDocument().getData();
+                    String mid=(String)m.get("sdpMid"); Number idx=(Number)m.get("sdpMLineIndex"); String cand=(String)m.get("candidate");
+                    if(cand!=null)studentPeer.addIceCandidate(new IceCandidate(mid,idx==null?0:idx.intValue(),cand));
+                }
+            });
+            db.collection("liveRooms").document(roomId).collection("participants").document(liveParticipantId).addSnapshotListener((snap,e)->{
+                if(e!=null||snap==null||!snap.exists()||studentPeer==null)return;
+                Map<String,Object> a=snap.getData(); Object answer=a.get("answer");
+                if(answer instanceof Map && studentPeer.getRemoteDescription()==null){
+                    Map<?,?> am=(Map<?,?>)answer;
+                    String type=String.valueOf(am.get("type")); String sdp=String.valueOf(am.get("sdp"));
+                    studentPeer.setRemoteDescription(new SessionDescription(SessionDescription.Type.fromCanonicalForm(type),sdp),new SimpleSdpObserver(){public void onSetSuccess(){runOnUiThread(()->status.setText("LIVE — Teacher connected."));}});
+                }
+            });
+            studentPeer.createOffer(new SimpleSdpObserver(){
+                public void onCreateSuccess(SessionDescription offer){
+                    studentPeer.setLocalDescription(this,offer);
+                    Map<String,Object> om=new HashMap<>(); om.put("type",offer.type.canonicalForm()); om.put("sdp",offer.description);
+                    db.collection("liveRooms").document(roomId).collection("participants").document(liveParticipantId).update("offer",om);
+                }
+                public void onCreateFailure(String s){runOnUiThread(()->status.setText("Offer failed: "+s));}
+            },new MediaConstraints());
+        });
+    }
+
+    private void leaveStudentLive(){
+        if(liveTeacherCandidatesListener!=null)liveTeacherCandidatesListener.remove();
+        if(liveParticipantListener!=null)liveParticipantListener.remove();
+        if(studentPeer!=null){studentPeer.close();studentPeer=null;}
+        if(liveRenderer!=null){liveRenderer.release();liveRenderer=null;}
+        if(liveParticipantId!=null && liveRoomId!=null){
+            db.collection("liveRooms").document(liveRoomId).collection("participants").document(liveParticipantId).delete();
+        }
+        liveParticipantId=null; liveRoomId=null;
+        loadHome();
+    }
+
+    private static class SimpleSdpObserver implements SdpObserver {
+        public void onCreateSuccess(SessionDescription s){}
+        public void onSetSuccess(){}
+        public void onCreateFailure(String s){}
+        public void onSetFailure(String s){}
+    }
+
 }
