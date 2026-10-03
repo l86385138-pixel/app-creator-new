@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, session } = require("electron");
 const path = require("path");
 
 function createWindow(){
@@ -17,6 +17,9 @@ function createWindow(){
 }
 
 app.whenReady().then(()=>{
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(permission === "media" || permission === "camera" || permission === "microphone");
+  });
   createWindow();
   app.on("activate",()=>{ if(BrowserWindow.getAllWindows().length===0) createWindow(); });
 });
