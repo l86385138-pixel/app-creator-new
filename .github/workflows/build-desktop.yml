@@ -1,4 +1,4 @@
-name: Build Windows Desktop Student App
+name: Build Gigbiz Windows Admin App
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: gayan-ganga-student-windows
+          name: gigbiz-admin-windows
           path: desktop/dist/*.exe
           if-no-files-found: error
           retention-days: 30
