@@ -1,27 +1,7 @@
 {
-  "name":"gayan-ganga-student-desktop",
-  "version":"1.0.0",
-  "description":"Gayan Ganga Coaching Center student desktop app",
-  "main":"main.js",
-  "author":"Gayan Ganga Coaching Center",
-  "license":"MIT",
-  "scripts":{
-    "start":"electron .",
-    "dist":"electron-builder --win"
-  },
-  "dependencies":{
-    "firebase":"^11.10.0"
-  },
-  "devDependencies":{
-    "electron":"^36.3.2",
-    "electron-builder":"^26.0.12"
-  },
-  "build":{
-    "appId":"com.gayangangacoachingcenter.desktop",
-    "productName":"Gayan Ganga Student",
-    "directories":{"output":"dist"},
-    "files":["**/*"],
-    "win":{"target":["nsis"],"artifactName":"Gayan-Ganga-Student-Setup-${version}.${ext}"},
-    "nsis":{"oneClick":false,"allowToChangeInstallationDirectory":true,"createDesktopShortcut":true,"createStartMenuShortcut":true}
-  }
+  "name":"gigbiz-admin","version":"1.0.0","description":"Gigbiz Windows Admin App","main":"main.js","author":"Great India Technology","license":"MIT",
+  "scripts":{"start":"electron .","dist":"electron-builder --win"},
+  "dependencies":{"firebase":"^11.10.0"},
+  "devDependencies":{"electron":"^36.3.2","electron-builder":"^26.0.12"},
+  "build":{"appId":"com.gigbiz.admin","productName":"Gigbiz Admin","directories":{"output":"dist"},"files":["**/*"],"win":{"target":["nsis"],"artifactName":"Gigbiz-Admin-Setup-1.0.0.exe"},"nsis":{"oneClick":false,"allowToChangeInstallationDirectory":true,"createDesktopShortcut":true,"createStartMenuShortcut":true}}
 }
