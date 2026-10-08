@@ -2,42 +2,16 @@ plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
 }
-
 android {
-    namespace 'com.gayangangacoachingcenter.app'
+    namespace 'com.gigbiz.app'
     compileSdk 35
-
-    defaultConfig {
-        applicationId 'com.gayangangacoachingcenter.app'
-        minSdk 23
-        targetSdk 35
-        versionCode 1
-        versionName '1.0'
-    }
-
-    signingConfigs {
-        release {
-            storeFile file('../release-keystore.jks')
-            storePassword 'android'
-            keyAlias 'appcreator'
-            keyPassword 'android'
-        }
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            shrinkResources false
-            signingConfig signingConfigs.release
-        }
-    }
+    defaultConfig { applicationId 'com.gigbiz.app'; minSdk 23; targetSdk 35; versionCode 1; versionName '1.0' }
+    signingConfigs { release { storeFile file('../release-keystore.jks'); storePassword 'android'; keyAlias 'appcreator'; keyPassword 'android' } }
+    buildTypes { release { minifyEnabled false; shrinkResources false; signingConfig signingConfigs.release } }
 }
-
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:34.3.0')
-    implementation 'com.google.firebase:firebase-auth'
-    implementation 'com.google.firebase:firebase-firestore'
-    implementation 'com.google.firebase:firebase-storage'
-    implementation 'com.github.bumptech.glide:glide:4.16.0'
-    implementation 'io.github.webrtc-sdk:android:144.7559.01'
+ implementation platform('com.google.firebase:firebase-bom:34.3.0')
+ implementation 'com.google.firebase:firebase-auth'
+ implementation 'com.google.firebase:firebase-firestore'
+ implementation 'com.google.firebase:firebase-storage'
 }
