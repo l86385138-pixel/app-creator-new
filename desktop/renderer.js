@@ -36,10 +36,64 @@ async function workers(){current='workers';let s=await getDocs(query(collection(
 window.workerStatus=async(id,status)=>{try{await updateDoc(doc(db,'users',id),{status});workers()}catch(e){alert(e.message)}};
 async function applications(){current='applications';let s=await getDocs(collection(db,'applications')),rows=[];s.forEach(d=>{let x=d.data();rows.push([esc(x.workerEmail||x.workerId||''),esc(x.gigTitle||x.gigId||''),esc(x.status||'pending'),'<button class="btn success" onclick="appStatus(\''+d.id+'\',\'approved\')">Approve</button> <button class="btn danger" onclick="appStatus(\''+d.id+'\',\'rejected\')">Reject</button>'])});shell('<h1>Applications</h1>'+table('Applications',['Worker','Gig','Status','Actions'],rows))}
 window.appStatus=async(id,status)=>{try{await updateDoc(doc(db,'applications',id),{status,updatedAt:serverTimestamp()});applications()}catch(e){alert(e.message)}};
-async function leads(){current='leads';let s=await getDocs(collection(db,'leads')),rows=[];s.forEach(d=>{let x=d.data();let st=x.status||'interview_pending';let actions='<button class="btn secondary" onclick="leadStatus(\\''+d.id+'\\',\\'interview_pending\\')">Interview Pending</button> <button class="btn primary" onclick="verifyLead(\\''+d.id+'\\')">Verify & Credit</button> <button class="btn success" onclick="leadStatus(\\''+d.id+'\\',\\'complete\\')">Complete</button> <button class="btn danger" onclick="leadStatus(\\''+d.id+'\\',\\'reject\\')">Reject</button>';rows.push([esc(x.customerName||x.name||''),esc(x.phone||x.mobile||''),esc(x.pincode||''),esc(x.workerId||''),'₹'+esc(x.taskAmount||'0'),'<b>'+esc(st)+'</b>',actions]);});shell('<h1>Leads</h1><p class="muted">Interview Pending → Verify → Complete / Reject. Verify credits the worker wallet once.</p>'+table('Customer Leads',['Name','Mobile','Pincode','Worker','Task Amount','Status','Actions'],rows))}
-window.leadStatus=async(id,status)=>{try{await updateDoc(doc(db,'leads',id),{status,updatedAt:serverTimestamp(),updatedBy:auth.currentUser.uid});leads()}catch(e){alert('Lead update failed: '+e.message)}};
-window.verifyLead=async(id)=>{if(!confirm('Verify this lead and credit the task amount to the worker wallet?'))return;try{await runTransaction(db,async(t)=>{const lr=doc(db,'leads',id);const lead=(await t.get(lr)).data();if(!lead)throw new Error('Lead not found');if(lead.walletCredited===true)throw new Error('This lead is already credited.');const workerId=lead.workerId;if(!workerId)throw new Error('Worker ID missing.');const ur=doc(db,'users',workerId);const user=(await t.get(ur)).data();if(!user)throw new Error('Worker account not found.');const amount=Number(lead.taskAmount||0);if(!Number.isFinite(amount)||amount<=0)throw new Error('Invalid task amount.');const wallet=Number(user.wallet||0);t.update(ur,{wallet:wallet+amount,updatedAt:serverTimestamp()});t.update(lr,{status:'verify',walletCredited:true,verifiedAt:serverTimestamp(),verifiedBy:auth.currentUser.uid,updatedAt:serverTimestamp()});});alert('Lead verified and ₹'+(Number((await getDoc(doc(db,'leads',id))).data()?.taskAmount||0))+' credited to worker wallet.');leads()}catch(e){alert('Verify failed: '+e.message)}};
-async function tasks(){current='tasks';let s=await getDocs(collection(db,'tasks')),rows=[];s.forEach(d=>{let x=d.data();rows.push([esc(x.title||x.name||''),esc(x.workerId||''),esc(x.status||'pending'),'<button class="btn success" onclick="taskStatus(\''+d.id+'\',\'completed\')">Complete</button>'])});shell('<h1>Tasks</h1><div class="panel"><input id="taskTitle" class="input" placeholder="Task title"><input id="taskWorker" class="input" placeholder="Worker ID"><textarea id="taskDesc" class="textarea" placeholder="Description"></textarea><br><button class="btn primary" onclick="addTask()">ADD TASK</button></div>'+table('Tasks',['Task','Worker','Status','Action'],rows))}
+async function leads(){
+ current='leads';
+ const s=await getDocs(collection(db,'leads'));
+ let rows=[];
+ s.forEach(d=>{
+   const x=d.data();
+   const st=x.status||'interview_pending';
+   const id=d.id;
+   const actions='<button class="btn secondary" onclick="leadStatus(\''+id+'\',\'interview_pending\')">Interview Pending</button> '+
+     '<button class="btn primary" onclick="verifyLead(\''+id+'\')">Verify & Credit</button> '+
+     '<button class="btn success" onclick="leadStatus(\''+id+'\',\'complete\')">Complete</button> '+
+     '<button class="btn danger" onclick="leadStatus(\''+id+'\',\'reject\')">Reject</button>';
+   rows.push([
+     esc(x.customerName||x.name||''),
+     esc(x.phone||x.mobile||''),
+     esc(x.pincode||''),
+     esc(x.workerId||''),
+     '₹'+esc(x.taskAmount||'0'),
+     '<b>'+esc(st)+'</b>',
+     actions
+   ]);
+ });
+ shell('<h1>Leads</h1><p class="muted">Interview Pending → Verify → Complete / Reject. Verify credits the worker wallet once.</p>'+
+   table('Customer Leads',['Name','Mobile','Pincode','Worker','Task Amount','Status','Actions'],rows));
+}
+window.leadStatus=async(id,status)=>{
+ try{
+   await updateDoc(doc(db,'leads',id),{status,updatedAt:serverTimestamp(),updatedBy:auth.currentUser.uid});
+   leads();
+ }catch(e){alert('Lead update failed: '+e.message);}
+};
+window.verifyLead=async(id)=>{
+ if(!confirm('Verify this lead and credit the task amount to the worker wallet?'))return;
+ try{
+   let credited=0;
+   await runTransaction(db,async(t)=>{
+     const lr=doc(db,'leads',id);
+     const leadSnap=await t.get(lr);
+     const lead=leadSnap.data();
+     if(!lead)throw new Error('Lead not found.');
+     if(lead.walletCredited===true)throw new Error('This lead is already credited.');
+     const workerId=lead.workerId;
+     if(!workerId)throw new Error('Worker ID missing.');
+     const ur=doc(db,'users',workerId);
+     const userSnap=await t.get(ur);
+     const user=userSnap.data();
+     if(!user)throw new Error('Worker account not found.');
+     const amount=Number(lead.taskAmount||0);
+     if(!Number.isFinite(amount)||amount<=0)throw new Error('Invalid task amount.');
+     credited=amount;
+     const wallet=Number(user.wallet||0);
+     t.update(ur,{wallet:wallet+amount,updatedAt:serverTimestamp()});
+     t.update(lr,{status:'verify',walletCredited:true,verifiedAt:serverTimestamp(),verifiedBy:auth.currentUser.uid,updatedAt:serverTimestamp()});
+   });
+   alert('Lead verified. ₹'+credited+' credited to worker wallet.');
+   leads();
+ }catch(e){alert('Verify failed: '+e.message);}
+};async function tasks(){current='tasks';let s=await getDocs(collection(db,'tasks')),rows=[];s.forEach(d=>{let x=d.data();rows.push([esc(x.title||x.name||''),esc(x.workerId||''),esc(x.status||'pending'),'<button class="btn success" onclick="taskStatus(\''+d.id+'\',\'completed\')">Complete</button>'])});shell('<h1>Tasks</h1><div class="panel"><input id="taskTitle" class="input" placeholder="Task title"><input id="taskWorker" class="input" placeholder="Worker ID"><textarea id="taskDesc" class="textarea" placeholder="Description"></textarea><br><button class="btn primary" onclick="addTask()">ADD TASK</button></div>'+table('Tasks',['Task','Worker','Status','Action'],rows))}
 window.addTask=async()=>{try{await addDoc(collection(db,'tasks'),{title:val('taskTitle'),workerId:val('taskWorker'),description:val('taskDesc'),status:'pending',createdAt:serverTimestamp(),createdBy:auth.currentUser.uid});tasks()}catch(e){alert(e.message)}};
 window.taskStatus=async(id,status)=>{try{await updateDoc(doc(db,'tasks',id),{status,updatedAt:serverTimestamp()});tasks()}catch(e){alert(e.message)}};
 async function withdrawals(){current='withdrawals';let s=await getDocs(collection(db,'withdrawals')),rows=[];s.forEach(d=>{let x=d.data();rows.push([esc(x.workerId||''),'₹'+esc(x.amount||'0'),esc(x.upiId||x.paymentDetail||''),esc(x.status||'pending'),'<button class="btn success" onclick="wdStatus(\''+d.id+'\',\'approved\')">Approve</button> <button class="btn danger" onclick="wdStatus(\''+d.id+'\',\'rejected\')">Reject</button>'])});shell('<h1>Withdrawals</h1>'+table('Withdrawal Requests',['Worker','Amount','Payment','Status','Actions'],rows))}
