@@ -1,1 +1,39 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gigbiz</title><style>body{margin:0;font-family:Arial,sans-serif;background:#f6f7fb;color:#17212b}.top{background:#fff;padding:18px 22px;font-weight:800;font-size:24px;color:#6d3abe;border-bottom:1px solid #ddd}.wrap{max-width:720px;margin:auto;background:#fff;min-height:100vh}.hero{margin:16px;border-radius:20px;background:#4d2088;color:#fff;padding:24px}.hero h1{margin:0 0 14px;font-size:27px}.stats{display:flex;gap:8px;margin-top:18px}.stat{flex:1;text-align:center;border-top:1px dashed #ddd;padding-top:12px}.tabs{display:flex;background:#fff;border-bottom:1px solid #ddd}.tabs div{flex:1;text-align:center;padding:17px 4px;font-weight:700}.content{padding:16px}.box{background:#f8f9fb;border:1px solid #e2e5ea;border-radius:12px;padding:16px;white-space:pre-line;line-height:1.5}.input{width:100%;box-sizing:border-box;padding:14px;margin:8px 0;border:1px solid #cfd5dc;border-radius:9px;font-size:16px}.check{background:#f2f2f2;padding:15px;border-radius:9px;margin:10px 0}.btn{border:0;border-radius:28px;padding:15px 24px;background:#7c3dcc;color:#fff;font-size:17px;font-weight:700;width:100%;cursor:pointer}.small{color:#777;font-size:13px}</style></head><body><div class="wrap"><div class="top">GIGBIZ</div><div id="page"></div></div><script>const p=new URLSearchParams(location.search),title=p.get('title')||'Gigbiz Project',pay=p.get('pay')||'0',desc=p.get('desc')||'Project details will be provided by Gigbiz.',applyUrl=p.get('applyUrl')||'',page=document.getElementById('page');const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function detail(){page.innerHTML='<div class="hero"><h1>'+esc(title)+'</h1><div class="stats"><div class="stat"><b>'+esc(pay)+'</b><br>TOTAL EARNING</div><div class="stat">00<br>TOTAL LEADS</div><div class="stat">00<br>TOTAL SALES</div></div></div><div class="tabs"><div>Details</div><div>Marketing</div><div>Training</div></div><div class="content"><div class="box"><b>Offers</b>\\n\\n'+esc(desc)+'\\n\\n<b>Whom to refer?</b>\\nEligible customers can submit their information below.\\n\\n<b>Training</b>\\nTraining details are managed by Gigbiz Admin.</div><br><button class="btn" onclick="formPage()">APPLY NOW / SHARE</button></div>'}function formPage(){page.innerHTML='<div class="content"><h2>Apply Now</h2><p class="small">Please enter the customer information.</p><input id="phone" class="input" placeholder="Mobile Number" inputmode="tel"><input id="name" class="input" placeholder="Full Name"><input id="pin" class="input" placeholder="Pincode"><div class="check"><input id="agree" type="checkbox"> I authorise Gigbiz to securely store and use my information for this offer and accept the privacy policy.</div><button class="btn" onclick="submitForm()">SUBMIT</button></div>'}function submitForm(){if(!phone.value.trim()||!name.value.trim()||!pin.value.trim()||!agree.checked){alert('Please complete all fields and accept the consent.');return}if(applyUrl){location.href=applyUrl}else{page.innerHTML='<div class="content"><h2>Submitted successfully</h2><p>Your information has been submitted.</p><button class="btn" onclick="detail()">BACK</button></div>'}}detail();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gigbiz Product</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#17212b;font-family:Arial,sans-serif}
+.wrap{max-width:1100px;margin:auto;background:#fff;min-height:100vh}.top{height:62px;padding:15px 24px;border-bottom:1px solid #ddd;font-weight:800;font-size:22px;color:#6d3abe;display:flex;align-items:center}.back{color:#6d3abe;margin-right:10px}
+.main{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:20px}.card{background:#fff;border:1px solid #e1e4e8;border-radius:10px;overflow:hidden}
+.banner{width:100%;height:250px;object-fit:cover;background:#6d3abe}.placeholder{height:250px;background:linear-gradient(135deg,#6d3abe,#8b4ed8);display:flex;align-items:center;justify-content:center;color:#fff;font-size:34px;font-weight:800;padding:25px;text-align:center}
+.form{padding:16px}.input{width:100%;padding:15px;margin:7px 0;border:1px solid #cfd5dc;border-radius:7px;font-size:16px}.consent{background:#f1f1f1;padding:14px;margin:10px 0;border-radius:6px;font-size:13px;line-height:1.5}.btn{width:100%;border:0;border-radius:5px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;background:#2d7cf0;color:#fff}.btn:disabled{opacity:.5}.details{padding:20px}.tabs{display:flex;border-bottom:1px solid #ddd}.tab{flex:1;text-align:center;padding:17px;font-weight:700}.tab.active{border-bottom:3px solid #17212b}.section{padding:18px 0;border-bottom:1px solid #e2e2e2}.section:last-child{border-bottom:0}.section h3{margin:0 0 14px}.line{margin:12px 0;font-size:16px;line-height:1.45}.price{font-size:20px;font-weight:800;color:#6d3abe}.small{font-size:12px;color:#6d7075}@media(max-width:800px){.main{grid-template-columns:1fr;padding:12px}.banner,.placeholder{height:230px}.top{padding:14px 16px}}
+</style></head>
+<body><div class="wrap">
+<div class="top"><span class="back">‹</span><span>Product Detail</span></div>
+<div id="app"></div>
+</div>
+<script>
+const p=new URLSearchParams(location.search);
+const q=k=>p.get(k)||'';
+const title=q('title')||'Gigbiz Product';
+const pay=q('pay')||'0';
+const desc=q('desc')||'Product details and customer benefits will be provided by Gigbiz.';
+const applyUrl=q('applyUrl');
+const image=q('image');
+const leads=q('leads')||'00', sales=q('sales')||'00';
+const app=document.getElementById('app');
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function detail(){
+ app.innerHTML='<div class="main"><div><div class="card">'+(image?'<img class="banner" src="'+esc(image)+'">':'<div class="placeholder">'+esc(title)+'</div>')+'</div><div class="card form" style="margin-top:14px"><h3>Customer Information</h3><input id="phone" class="input" placeholder="Mobile Number" inputmode="tel"><input id="name" class="input" placeholder="Full Name"><input id="pin" class="input" placeholder="Pincode"><div class="consent"><input id="agree" type="checkbox"> I authorise Gigbiz to securely store and use my data for this product and accept the privacy policy.</div><button id="submit" class="btn" onclick="submitForm()">SUBMIT</button></div></div><div class="card"><div class="details"><div class="tabs"><div class="tab active">Benefits</div><div class="tab">Details</div></div><div class="section"><h3>Features &amp; Benefits</h3><div class="line">🎁 <b>Customer Benefits:</b></div><div class="line">📱 Fully digital product/service process</div><div class="line">🏦 Product benefits configured by Gigbiz Admin</div><div class="line">💰 <span class="price">Earn ₹'+esc(pay)+'</span> worker earning</div><div class="line">❌ No unnecessary information required beyond the customer form</div><div class="line">🎁 Customer offer/details can be configured by Admin</div><div class="line">💵 Fees &amp; Charges</div><div class="line">— '+esc(desc)+'</div></div><div class="section"><h3>Whom to refer?</h3><div class="line">Eligible customers and referral information can be configured by Admin.</div></div><div class="section"><h3>Training</h3><div class="line">Training information can be configured by Admin.</div></div></div></div></div>';
+}
+async function submitForm(){
+ const phone=document.getElementById('phone').value.trim(),name=document.getElementById('name').value.trim(),pin=document.getElementById('pin').value.trim(),agree=document.getElementById('agree').checked;
+ if(!phone||!name||!pin||!agree){alert('Please complete all fields and accept the consent.');return}
+ document.getElementById('submit').disabled=true;
+ if(applyUrl){location.href=applyUrl;return}
+ app.innerHTML='<div class="details"><h2>Submitted successfully</h2><p>Your information has been submitted.</p></div>';
+}
+detail();
+</script></body></html>
