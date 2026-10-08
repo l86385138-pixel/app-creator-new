@@ -5,14 +5,9 @@ service cloud.firestore {
   function me(){return /databases/$(database)/documents/users/$(request.auth.uid);}
   function admin(){return signedIn() && exists(me()) && get(me()).data.role=="admin";}
   function worker(){return signedIn() && exists(me()) && get(me()).data.role=="worker";}
-  match /users/{uid}{
-   allow read: if admin() || (signedIn() && request.auth.uid==uid);
-   allow create: if signedIn() && request.auth.uid==uid;
-   allow update: if admin() || (signedIn() && request.auth.uid==uid && request.resource.data.role==resource.data.role);
-   allow delete: if admin();
-  }
+  match /users/{uid}{ allow read: if admin() || (signedIn() && request.auth.uid==uid); allow create: if signedIn() && request.auth.uid==uid; allow update: if admin() || (signedIn() && request.auth.uid==uid && request.resource.data.role==resource.data.role); allow delete: if admin(); }
   match /gigs/{id}{allow read: if signedIn(); allow create,update,delete: if admin();}
-  match /projects/{id}{allow read: if admin() || (worker() && resource.data.workerId==request.auth.uid); allow create,update,delete: if admin() || (worker() && resource.data.workerId==request.auth.uid);}
+  match /projects/{id}{allow read: if admin() || (worker() && resource.data.workerId==request.auth.uid); allow create,update,delete: if admin() || (worker() && request.resource.data.workerId==request.auth.uid);}
   match /categories/{id}{allow read: if signedIn(); allow create,update,delete: if admin();}
   match /services/{id}{allow read: if signedIn(); allow create,update,delete: if admin();}
   match /applications/{id}{allow read: if admin() || (worker() && resource.data.workerId==request.auth.uid); allow create: if worker() && request.resource.data.workerId==request.auth.uid; allow update: if admin() || (worker() && resource.data.workerId==request.auth.uid); allow delete: if admin();}
@@ -21,4 +16,4 @@ service cloud.firestore {
   match /withdrawals/{id}{allow read: if admin() || (worker() && resource.data.workerId==request.auth.uid); allow create: if worker() && request.resource.data.workerId==request.auth.uid; allow update,delete: if admin();}
   match /activity/{id}{allow read: if admin() || (worker() && resource.data.userId==request.auth.uid); allow create: if signedIn() && request.resource.data.userId==request.auth.uid;}
   match /{document=**}{allow read,write: if false;}
-}
+ }}
