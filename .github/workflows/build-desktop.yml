@@ -3,6 +3,8 @@ name: Build Gigbiz Windows Admin App
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
       - "desktop/**"
       - ".github/workflows/build-desktop.yml"
@@ -13,24 +15,65 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+
     defaults:
       run:
         working-directory: desktop
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package.json
+
+      - name: Check project files
+        shell: pwsh
+        run: |
+          if (!(Test-Path "package.json")) { throw "desktop/package.json not found" }
+          if (!(Test-Path "main.js")) { throw "desktop/main.js not found" }
+          if (!(Test-Path "index.html")) { throw "desktop/index.html not found" }
+          if (!(Test-Path "renderer.js")) { throw "desktop/renderer.js not found" }
+
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
+
+      - name: Validate JavaScript
+        run: |
+          node --check main.js
+          node --check renderer.js
+
+      - name: Verify Electron Builder
+        run: npx electron-builder --version
+
       - name: Build Windows installer
-        run: npm run dist
-      - name: Upload Windows installer
+        run: npm run dist -- --win nsis
+
+      - name: Verify EXE
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path "dist" -Filter "*.exe" -File
+          if ($exe.Count -lt 1) { throw "No Windows EXE was generated." }
+          $exe | ForEach-Object { Write-Host "Generated: $($_.FullName) ($($_.Length) bytes)" }
+
+      - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
-          name: gigbiz-admin-windows
+          name: gigbiz-admin-windows-exe
           path: desktop/dist/*.exe
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: gigbiz-admin-windows-build-files
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.yml
+          if-no-files-found: warn
           retention-days: 30
