@@ -9,6 +9,25 @@
       "client_info": {
         "mobilesdk_app_id": "1:981161594143:android:58fe67c301579f1e5f342a",
         "android_client_info": {
+          "package_name": "com.gayangangacoachingcenter.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADgWN_jTklvg5VAOBppRnYBNvY_CfR4tY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:981161594143:android:137f31720228866e5f342a",
+        "android_client_info": {
           "package_name": "com.gigbiz.app"
         }
       },
