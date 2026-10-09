@@ -6,28 +6,35 @@ service cloud.firestore {
     function me(){ return /databases/$(database)/documents/users/$(request.auth.uid); }
     function admin(){ return signedIn() && exists(me()) && get(me()).data.role == "admin"; }
     function worker(){ return signedIn() && exists(me()) && get(me()).data.role == "worker"; }
-    function validWithdrawalDebit(uid){
+    function validWithdrawalDebit(uid, oldUser, newUser) {
+      let wid = newUser.lastWithdrawalRequestId;
+      let withdrawalPath = /databases/$(database)/documents/withdrawals/$(wid);
       return signedIn()
         && request.auth.uid == uid
-        && resource.data.role == "worker"
-        && request.resource.data.wallet is number
-        && resource.data.wallet is number
-        && request.resource.data.wallet < resource.data.wallet
-        && request.resource.data.lastWithdrawalRequestId is string
-        && existsAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId))
-        && getAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId)).data.workerId == uid
-        && getAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId)).data.requestId == request.resource.data.lastWithdrawalRequestId
-        && getAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId)).data.status == "pending"
-        && getAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId)).data.amount == resource.data.wallet - request.resource.data.wallet;
+        && oldUser.role == "worker"
+        && oldUser.wallet is number
+        && newUser.wallet is number
+        && newUser.wallet >= 0
+        && newUser.wallet < oldUser.wallet
+        && wid is string
+        && existsAfter(withdrawalPath)
+        && getAfter(withdrawalPath).data.workerId == uid
+        && getAfter(withdrawalPath).data.requestId == wid
+        && getAfter(withdrawalPath).data.status == "pending"
+        && getAfter(withdrawalPath).data.amount == oldUser.wallet - newUser.wallet;
     }
 
     match /users/{uid} {
       allow read: if admin() || (signedIn() && request.auth.uid == uid);
       allow create: if signedIn() && request.auth.uid == uid;
       allow update: if admin()
-        || (signedIn() && request.auth.uid == uid
-            && request.resource.data.role == resource.data.role
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["role","wallet","status","lastWithdrawalRequestId"])) || validWithdrawalDebit(uid);
+        || (
+          signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["role","wallet","status","lastWithdrawalRequestId"])
+        )
+        || validWithdrawalDebit(uid, resource.data, request.resource.data);
       allow delete: if admin();
     }
 
