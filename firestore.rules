@@ -6,6 +6,20 @@ service cloud.firestore {
     function me(){ return /databases/$(database)/documents/users/$(request.auth.uid); }
     function admin(){ return signedIn() && exists(me()) && get(me()).data.role == "admin"; }
     function worker(){ return signedIn() && exists(me()) && get(me()).data.role == "worker"; }
+    function validWithdrawalDebit(uid){
+      return signedIn()
+        && request.auth.uid == uid
+        && resource.data.role == "worker"
+        && request.resource.data.wallet is number
+        && resource.data.wallet is number
+        && request.resource.data.wallet < resource.data.wallet
+        && request.resource.data.lastWithdrawalRequestId is string
+        && existsAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId))
+        && getAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId)).data.workerId == uid
+        && getAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId)).data.requestId == request.resource.data.lastWithdrawalRequestId
+        && getAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId)).data.status == "pending"
+        && getAfter(/databases/$(database)/documents/withdrawals/$(request.resource.data.lastWithdrawalRequestId)).data.amount == resource.data.wallet - request.resource.data.wallet;
+    }
 
     match /users/{uid} {
       allow read: if admin() || (signedIn() && request.auth.uid == uid);
@@ -13,7 +27,7 @@ service cloud.firestore {
       allow update: if admin()
         || (signedIn() && request.auth.uid == uid
             && request.resource.data.role == resource.data.role
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["role","wallet","status"]));
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["role","wallet","status","lastWithdrawalRequestId"])) || validWithdrawalDebit(uid);
       allow delete: if admin();
     }
 
@@ -42,7 +56,15 @@ service cloud.firestore {
     }
     match /withdrawals/{id} {
       allow read: if admin() || (worker() && resource.data.workerId == request.auth.uid);
-      allow create: if worker() && request.resource.data.workerId == request.auth.uid;
+      allow create: if worker()
+        && request.resource.data.workerId == request.auth.uid
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.status == "pending"
+        && request.resource.data.requestId is string
+        && request.resource.data.requestId == request.resource.id
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.lastWithdrawalRequestId == request.resource.data.requestId
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.wallet is number;
       allow update,delete: if admin();
     }
     match /activity/{id} {
