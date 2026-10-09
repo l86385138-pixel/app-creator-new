@@ -68,33 +68,47 @@ window.leadStatus=async(id,status)=>{
  }catch(e){alert('Lead update failed: '+e.message);}
 };
 window.verifyLead=async(id)=>{
- if(!confirm('Verify this lead and credit the task amount to the worker wallet?'))return;
  try{
-   let credited=0;
-   await runTransaction(db,async(t)=>{
-     const lr=doc(db,'leads',id);
-     const leadSnap=await t.get(lr);
-     const lead=leadSnap.data();
-     if(!lead)throw new Error('Lead not found.');
-     if(lead.walletCredited===true)throw new Error('This lead is already credited.');
-     const workerId=lead.workerId;
-     if(!workerId)throw new Error('Worker ID missing.');
-     const ur=doc(db,'users',workerId);
-     const userSnap=await t.get(ur);
-     const user=userSnap.data();
-     if(!user)throw new Error('Worker account not found.');
-     const amount=Number(lead.taskAmount||0);
-     if(!Number.isFinite(amount)||amount<=0)throw new Error('Invalid task amount.');
-     credited=amount;
-     const wallet=Number(user.wallet||0);
-     t.update(ur,{wallet:wallet+amount,updatedAt:serverTimestamp()});
-     t.update(lr,{status:'verify',walletCredited:true,verifiedAt:serverTimestamp(),verifiedBy:auth.currentUser.uid,updatedAt:serverTimestamp()});
-   });
-   alert('Lead verified. ₹'+credited+' credited to worker wallet.');
-   leads();
+  const preview=(await getDoc(doc(db,'leads',id))).data();
+  if(!preview)throw new Error('Lead not found.');
+  if(preview.walletCredited===true)throw new Error('This lead is already credited.');
+  const amount=Number(preview.taskAmount||0);
+  if(!Number.isFinite(amount)||amount<=0)throw new Error('Invalid task amount.');
+  const memberId=String(preview.memberId||'').trim();
+  let workerMargin=amount, memberEarning=0;
+  if(memberId){
+    const proposed=prompt('Approved payout ₹'+amount+'\\nEnter worker margin in ₹. Remaining amount goes to the assigned member.',String(Math.round(amount/2*100)/100));
+    if(proposed===null)return;
+    workerMargin=Number(proposed);
+    if(!Number.isFinite(workerMargin)||workerMargin<0||workerMargin>amount)throw new Error('Worker margin must be between 0 and ₹'+amount+'.');
+    memberEarning=Math.round((amount-workerMargin)*100)/100;
+  }
+  if(!confirm('Approve lead?\\nWorker margin: ₹'+workerMargin+'\\nMember earning: ₹'+memberEarning+'\\nTotal: ₹'+amount))return;
+  await runTransaction(db,async(t)=>{
+   const lr=doc(db,'leads',id), leadSnap=await t.get(lr), lead=leadSnap.data();
+   if(!lead)throw new Error('Lead not found.');
+   if(lead.walletCredited===true)throw new Error('This lead is already credited.');
+   const workerId=lead.workerId;
+   if(!workerId)throw new Error('Worker ID missing.');
+   const ur=doc(db,'users',workerId), userSnap=await t.get(ur), user=userSnap.data();
+   if(!user)throw new Error('Worker account not found.');
+   const actual=Number(lead.taskAmount||0);
+   if(actual!==amount)throw new Error('Lead payout changed. Refresh and try again.');
+   t.update(ur,{wallet:Number(user.wallet||0)+workerMargin,updatedAt:serverTimestamp()});
+   if(memberId){
+    const mr=doc(db,'users',memberId), ms=await t.get(mr), member=ms.data();
+    if(!member || member.role!=='member')throw new Error('Assigned member account is missing or is not a member login.');
+    if(member.ownerId && member.ownerId!==workerId)throw new Error('This member does not belong to the lead owner.');
+    t.update(mr,{wallet:Number(member.wallet||0)+memberEarning,updatedAt:serverTimestamp()});
+   }
+   t.update(lr,{status:'verify',walletCredited:true,workerMargin,memberEarning,creditedAt:serverTimestamp(),verifiedAt:serverTimestamp(),verifiedBy:auth.currentUser.uid,updatedAt:serverTimestamp()});
+  });
+  alert('Lead approved. Worker margin ₹'+workerMargin+' and member earning ₹'+memberEarning+' credited.');
+  leads();
  }catch(e){alert('Verify failed: '+e.message);}
-};async function tasks(){current='tasks';let s=await getDocs(collection(db,'tasks')),rows=[];s.forEach(d=>{let x=d.data();rows.push([esc(x.title||x.name||''),esc(x.workerId||''),esc(x.status||'pending'),'<button class="btn success" onclick="taskStatus(\''+d.id+'\',\'completed\')">Complete</button>'])});shell('<h1>Tasks</h1><div class="panel"><input id="taskTitle" class="input" placeholder="Task title"><input id="taskWorker" class="input" placeholder="Worker ID"><textarea id="taskDesc" class="textarea" placeholder="Description"></textarea><br><button class="btn primary" onclick="addTask()">ADD TASK</button></div>'+table('Tasks',['Task','Worker','Status','Action'],rows))}
-window.addTask=async()=>{try{await addDoc(collection(db,'tasks'),{title:val('taskTitle'),workerId:val('taskWorker'),description:val('taskDesc'),status:'pending',createdAt:serverTimestamp(),createdBy:auth.currentUser.uid});tasks()}catch(e){alert(e.message)}};
+};
+async function tasks(){current='tasks';let s=await getDocs(collection(db,'tasks')),rows=[];s.forEach(d=>{let x=d.data();rows.push([esc(x.title||x.name||''),esc(x.workerId||''),esc(x.memberId||'—'),esc(x.status||'pending'),'<button class="btn success" onclick="taskStatus(\\''+d.id+'\\',\\'completed\\')">Complete</button>'])});shell('<h1>Tasks / Assignments</h1><div class="panel"><input id="taskTitle" class="input" placeholder="Task title"><input id="taskWorker" class="input" placeholder="Worker UID (team owner)"><input id="taskMember" class="input" placeholder="Member login UID (optional)"><textarea id="taskDesc" class="textarea" placeholder="Task description and onboarding guidelines"></textarea><br><button class="btn primary" onclick="addTask()">ASSIGN TASK</button></div>'+table('Tasks',['Task','Worker UID','Member UID','Status','Action'],rows))}
+window.addTask=async()=>{try{const title=val('taskTitle'),workerId=val('taskWorker'),memberId=val('taskMember'),description=val('taskDesc');if(!title||(!workerId&&!memberId))throw new Error('Task title and a worker or member UID are required.');await addDoc(collection(db,'tasks'),{title,workerId,memberId:memberId||'',description,status:'pending',createdAt:serverTimestamp(),createdBy:auth.currentUser.uid});tasks()}catch(e){alert('Task assignment failed: '+e.message)}};
 window.taskStatus=async(id,status)=>{try{await updateDoc(doc(db,'tasks',id),{status,updatedAt:serverTimestamp()});tasks()}catch(e){alert(e.message)}};
 async function withdrawals(){current='withdrawals';let s=await getDocs(collection(db,'withdrawals')),rows=[];s.forEach(d=>{let x=d.data();rows.push([esc(x.workerId||''),'₹'+esc(x.amount||'0'),esc(x.upiId||x.paymentDetail||''),esc(x.status||'pending'),'<button class="btn success" onclick="wdStatus(\''+d.id+'\',\'approved\')">Approve</button> <button class="btn danger" onclick="wdStatus(\''+d.id+'\',\'rejected\')">Reject</button>'])});shell('<h1>Withdrawals</h1>'+table('Withdrawal Requests',['Worker','Amount','Payment','Status','Actions'],rows))}
 window.wdStatus=async(id,status)=>{try{await runTransaction(db,async(t)=>{const wr=doc(db,'withdrawals',id);const wd=(await t.get(wr)).data();if(!wd)throw new Error('Withdrawal not found.');if(wd.status!=='pending')throw new Error('This withdrawal is already processed.');if(status==='rejected'){const uid=wd.workerId;const ur=doc(db,'users',uid);const u=(await t.get(ur)).data();if(!u)throw new Error('Worker account not found.');const wallet=Number(u.wallet||0);t.update(ur,{wallet:wallet+Number(wd.amount||0),updatedAt:serverTimestamp()});}t.update(wr,{status,processedAt:serverTimestamp(),processedBy:auth.currentUser.uid});});withdrawals()}catch(e){alert('Withdrawal update failed: '+e.message)}};
