@@ -173,6 +173,8 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
    addProfileRow(c,"👤","Personal Details","name, phone, email, city, address",v->editPersonal(u));
    addProfileRow(c,"💳","Payment Settings","UPI, bank account, account holder",v->editPayment(u));
    addProfileRow(c,"💼","Professional Details","skills, experience, profession",v->editProfessional(u));
+   addProfileRow(c,"🪪","Worker ID Card","View and share your Gigbiz worker ID",v->workerIdCard(u));
+   addProfileRow(c,"📄","Offer Letter","View and share your worker offer letter draft",v->workerOfferLetter(u));
    addProfileRow(c,"🪪","KYC Details","Aadhaar/PAN and verification status",v->editKyc(u));
    addProfileRow(c,"🎓","Education Details","qualification, institute, year",v->editEducation(u));
    addProfileRow(c,"🏆","Contest History","View your completed contests",v->contestHistory());
@@ -235,6 +237,44 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
  void shareProfile(DocumentSnapshot u){
   String n=u.getString("name");if(n==null)n="Gigbiz Worker";String text="Gigbiz Worker Profile\nName: "+n+"\nSkills: "+String.valueOf(u.get("skills")==null?"":u.get("skills"))+"\nLocation: "+String.valueOf(u.get("location")==null?"":u.get("location"))+"\nContact: "+String.valueOf(u.get("phone")==null?"":u.get("phone"));
   Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/plain");i.putExtra(Intent.EXTRA_TEXT,text);startActivity(Intent.createChooser(i,"Share Your Card"));
+ }
+ void workerIdCard(DocumentSnapshot u){
+  String uid=auth.getCurrentUser().getUid();
+  String workerId=uid.substring(0,Math.min(8,uid.length())).toUpperCase();
+  String name=u.getString("name");if(name==null||name.trim().isEmpty())name="Worker";
+  String phone=u.getString("phone");if(phone==null||phone.trim().isEmpty())phone="Not provided";
+  String email=auth.getCurrentUser().getEmail();if(email==null)email="";
+  String skills=u.getString("skills");if(skills==null||skills.trim().isEmpty())skills="Not provided";
+  LinearLayout root=base();topBar(root,"Worker ID Card");
+  LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(20),dp(18),dp(20),dp(18));card.setBackground(bg(purple,18));
+  TextView brand=tv("GIGBIZ  •  WORKER ID",16,true);brand.setTextColor(white);card.addView(brand);
+  TextView avatar=tv("🪪",42,true);avatar.setGravity(Gravity.CENTER);avatar.setTextColor(white);add(card,avatar,74,8);
+  TextView nm=tv(name,23,true);nm.setTextColor(white);nm.setGravity(Gravity.CENTER);card.addView(nm);
+  TextView id=tv("WORKER ID: "+workerId,14,true);id.setTextColor(white);id.setGravity(Gravity.CENTER);card.addView(id);
+  TextView details=tv("Mobile: "+phone+"\nEmail: "+email+"\nSkills: "+skills+"\nStatus: "+String.valueOf(u.get("status")==null?"Active":u.get("status")),13,false);details.setTextColor(white);details.setPadding(dp(4),dp(12),dp(4),dp(8));card.addView(details);
+  LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(dp(16),dp(18),dp(16),dp(10));root.addView(card,cp);
+  TextView note=tv("This is a digital profile ID for identification within Gigbiz. It is not a government ID.",12,false);note.setTextColor(muted);note.setPadding(dp(16),dp(8),dp(16),dp(8));root.addView(note);
+  TextView share=button("SHARE WORKER ID",green);add(root,share,52,12);share.setOnClickListener(v->shareDocument("Gigbiz Worker ID Card","GIGBIZ WORKER ID CARD\nName: "+name+"\nWorker ID: "+workerId+"\nMobile: "+phone+"\nEmail: "+email+"\nSkills: "+skills+"\nStatus: "+String.valueOf(u.get("status")==null?"Active":u.get("status"))+"\n\nDigital profile ID only; not a government identity document."));
+  setContentView(root);
+ }
+ void workerOfferLetter(DocumentSnapshot u){
+  String name=u.getString("name");if(name==null||name.trim().isEmpty())name="Worker";
+  String email=auth.getCurrentUser().getEmail();if(email==null)email="";
+  String phone=u.getString("phone");if(phone==null)phone="Not provided";
+  String date=java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM,java.util.Locale.getDefault()).format(new java.util.Date());
+  String letter="GREAT INDIA TECHNOLOGY™ / GIGBIZ\nWORKER OFFER LETTER — DRAFT\nDate: "+date+"\n\nTo: "+name+"\nEmail: "+email+"\nMobile: "+phone+"\n\nDear "+name+",\n\nWe invite you to register your interest in performing eligible tasks and projects through the Gigbiz platform. Work availability, task instructions, eligibility, verification and any payment are subject to the applicable task terms and review by the platform administrator.\n\nRole: Independent platform worker / task participant\nWork type: Task- or project-based, as offered in the app\nPayment: Only the amount shown for a task that is completed and approved under its stated terms\n\nThis document is a draft template for review. It is not proof of employment, a guarantee of work, or a guarantee of income. It becomes an official offer only if separately reviewed and signed by an authorized representative with the final terms.\n\nRegards,\nLavkush R\nGreat India Technology™";
+  LinearLayout root=base();topBar(root,"Offer Letter");
+  ScrollView scroll=new ScrollView(this);LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(18),dp(18),dp(18));box.setBackground(bg(white,12));
+  TextView h=tv("GREAT INDIA TECHNOLOGY™",18,true);h.setTextColor(purple);box.addView(h);
+  TextView sub=tv("WORKER OFFER LETTER — DRAFT",14,true);sub.setTextColor(muted);add(box,sub,38,4);
+  TextView body=tv(letter.substring(letter.indexOf("Date:")),14,false);body.setPadding(dp(4),dp(12),dp(4),dp(12));box.addView(body);
+  scroll.addView(box);LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,-2);bp.setMargins(dp(14),dp(14),dp(14),dp(8));root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+  TextView note=tv("Draft only — review and authorize before issuing as an official offer.",12,false);note.setTextColor(muted);note.setPadding(dp(16),dp(6),dp(16),dp(6));root.addView(note);
+  TextView share=button("SHARE OFFER LETTER DRAFT",green);add(root,share,52,8);share.setOnClickListener(v->shareDocument("Gigbiz Worker Offer Letter Draft",letter));
+  setContentView(root);
+ }
+ void shareDocument(String title,String body){
+  Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/plain");i.putExtra(Intent.EXTRA_SUBJECT,title);i.putExtra(Intent.EXTRA_TEXT,body);startActivity(Intent.createChooser(i,"Share "+title));
  }
  void showInfo(String title,String message){new AlertDialog.Builder(this).setTitle(title).setMessage(message).setPositiveButton("OK",null).show();}
  void deleteAccountConfirm(DocumentSnapshot u){
