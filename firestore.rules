@@ -74,6 +74,27 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.wallet is number;
       allow update,delete: if admin();
     }
+    match /teamMembers/{id} {
+      allow read: if admin()
+        || (worker() && resource.data.ownerId == request.auth.uid);
+      allow create: if worker()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 10
+        && request.resource.data.phone.size() <= 20
+        && request.resource.data.email is string
+        && request.resource.data.memberRole is string
+        && request.resource.data.status == "added";
+      allow update: if admin()
+        || (worker()
+          && resource.data.ownerId == request.auth.uid
+          && request.resource.data.ownerId == resource.data.ownerId);
+      allow delete: if admin()
+        || (worker() && resource.data.ownerId == request.auth.uid);
+    }
+
     match /activity/{id} {
       allow read: if admin() || (worker() && resource.data.userId == request.auth.uid);
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
