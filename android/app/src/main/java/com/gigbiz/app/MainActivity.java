@@ -254,7 +254,7 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
   TextView details=tv("Mobile: "+phone+"\nEmail: "+email+"\nSkills: "+skills+"\nStatus: "+String.valueOf(u.get("status")==null?"Active":u.get("status")),13,false);details.setTextColor(white);details.setPadding(dp(4),dp(12),dp(4),dp(8));card.addView(details);
   LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(dp(16),dp(18),dp(16),dp(10));root.addView(card,cp);
   TextView note=tv("This is a digital profile ID for identification within Gigbiz. It is not a government ID.",12,false);note.setTextColor(muted);note.setPadding(dp(16),dp(8),dp(16),dp(8));root.addView(note);
-  TextView share=button("SHARE WORKER ID",green);add(root,share,52,12);share.setOnClickListener(v->shareDocument("Gigbiz Worker ID Card","GIGBIZ WORKER ID CARD\nName: "+name+"\nWorker ID: "+workerId+"\nMobile: "+phone+"\nEmail: "+email+"\nSkills: "+skills+"\nStatus: "+String.valueOf(u.get("status")==null?"Active":u.get("status"))+"\n\nDigital profile ID only; not a government identity document."));
+  final String shareName=name,sharePhone=phone,shareEmail=email,shareSkills=skills,shareStatus=String.valueOf(u.get("status")==null?"Active":u.get("status"));\n  TextView share=button("SHARE WORKER ID",green);add(root,share,52,12);share.setOnClickListener(v->shareDocument("Gigbiz Worker ID Card","GIGBIZ WORKER ID CARD\nName: "+shareName+"\nWorker ID: "+workerId+"\nMobile: "+sharePhone+"\nEmail: "+shareEmail+"\nSkills: "+shareSkills+"\nStatus: "+shareStatus+"\n\nDigital profile ID only; not a government identity document."));
   setContentView(root);
  }
  void workerOfferLetter(DocumentSnapshot u){
