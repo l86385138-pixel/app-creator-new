@@ -12,7 +12,7 @@ service cloud.firestore {
       let withdrawalPath = /databases/$(database)/documents/withdrawals/$(wid);
       return signedIn()
         && request.auth.uid == uid
-        && oldUser.role == "worker"
+        && oldUser.role in ["worker", "member"]
         && oldUser.wallet is number
         && newUser.wallet is number
         && newUser.wallet >= 0
@@ -65,8 +65,8 @@ service cloud.firestore {
       allow update,delete: if admin();
     }
     match /withdrawals/{id} {
-      allow read: if admin() || (worker() && resource.data.workerId == request.auth.uid);
-      allow create: if worker()
+      allow read: if admin() || ((worker() || member()) && resource.data.workerId == request.auth.uid);
+      allow create: if (worker() || member())
         && request.resource.data.workerId == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0
