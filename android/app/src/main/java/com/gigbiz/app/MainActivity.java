@@ -139,7 +139,7 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
    TextView title=tv("My Profile",24,true); bar.addView(title,new LinearLayout.LayoutParams(0,dp(58),1));
    TextView lang=tv("अ  A",17,true); lang.setTextColor(purple); bar.addView(lang,new LinearLayout.LayoutParams(dp(60),dp(58))); c.addView(bar);
    LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.HORIZONTAL); card.setGravity(Gravity.CENTER_VERTICAL); card.setPadding(dp(14),dp(12),dp(12),dp(12)); card.setBackground(bg(Color.rgb(105,105,105),20));
-   TextView av=tv("₹",30,true); av.setGravity(Gravity.CENTER); av.setTextColor(white); av.setBackground(bg(purple,50)); card.addView(av,new LinearLayout.LayoutParams(dp(72),dp(72)));
+   ImageView av=new ImageView(this); av.setImageResource(com.gigbiz.app.R.drawable.ic_gigbiz); av.setScaleType(ImageView.ScaleType.FIT_CENTER); card.addView(av,new LinearLayout.LayoutParams(dp(72),dp(72)));
    LinearLayout info=new LinearLayout(this); info.setOrientation(LinearLayout.VERTICAL); info.setPadding(dp(12),0,0,0); String name=u.getString("name"); if(name==null||name.isEmpty())name="Worker"; info.addView(tv(name,21,true)); info.addView(tv("WORKER ID : "+uid.substring(0,Math.min(8,uid.length())).toUpperCase(),11,false));
    TextView share=button("Share Profile",purple2); LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(dp(150),dp(42));sp.topMargin=dp(7);info.addView(share,sp);card.addView(info,new LinearLayout.LayoutParams(0,dp(100),1));
    TextView level=tv("★\nWORKER",13,true);level.setGravity(Gravity.CENTER);level.setTextColor(white);card.addView(level,new LinearLayout.LayoutParams(dp(85),dp(90)));c.addView(card,new LinearLayout.LayoutParams(-1,dp(124)));
