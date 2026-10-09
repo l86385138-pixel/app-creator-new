@@ -6,6 +6,7 @@ service cloud.firestore {
     function me(){ return /databases/$(database)/documents/users/$(request.auth.uid); }
     function admin(){ return signedIn() && exists(me()) && get(me()).data.role == "admin"; }
     function worker(){ return signedIn() && exists(me()) && get(me()).data.role == "worker"; }
+    function member(){ return signedIn() && exists(me()) && get(me()).data.role == "member"; }
     function validWithdrawalDebit(uid, oldUser, newUser) {
       let wid = newUser.lastWithdrawalRequestId;
       let withdrawalPath = /databases/$(database)/documents/withdrawals/$(wid);
@@ -26,7 +27,9 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if admin() || (signedIn() && request.auth.uid == uid);
-      allow create: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.role in ["worker", "member"]
+        && (request.resource.data.role != "member" || request.resource.data.ownerId is string);
       allow update: if admin()
         || (
           signedIn()
