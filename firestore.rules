@@ -68,8 +68,8 @@ service cloud.firestore {
           signedIn()
           && request.auth.token.firebase.sign_in_provider == "anonymous"
           && request.resource.data.workerId is string
-          && exists(/databases/$(database)/documents/users/$(request.resource.data.workerId))
-          && get(/databases/$(database)/documents/users/$(request.resource.data.workerId)).data.role == "worker"
+          && request.resource.data.workerId.size() >= 10
+          && request.resource.data.workerId.size() <= 128
           && request.resource.data.customerName is string
           && request.resource.data.customerName.size() >= 2
           && request.resource.data.phone is string
