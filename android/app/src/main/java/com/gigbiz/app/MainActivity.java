@@ -270,7 +270,7 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
   new AlertDialog.Builder(this).setTitle("Contest History").setView(b).setPositiveButton("CLOSE",null).show();
  }
  void helpSupport(){
-  new AlertDialog.Builder(this).setTitle("Help & Support").setMessage("Need help with your GigSathi account, work, payment or KYC?\n\nUse your registered email to contact support.").setPositiveButton("EMAIL SUPPORT",(d,w)->{Intent i=new Intent(Intent.ACTION_SENDTO,Uri.parse("mailto:"));i.putExtra(Intent.EXTRA_SUBJECT,"GigSathi Worker Support");try{startActivity(i);}catch(Exception e){toast("No email app found.");}}).setNegativeButton("CLOSE",null).show();
+  new AlertDialog.Builder(this).setTitle("Help & Support").setMessage("Need help with your GigSathi account, work, payment or KYC?\n\nUse your registered email to contact support.").setPositiveButton("EMAIL SUPPORT",(d,w)->{Intent i=new Intent(Intent.ACTION_SENDTO,Uri.parse("mailto:"));i.putExtra(Intent.EXTRA_SUBJECT,"GigSathi Adviser Support");try{startActivity(i);}catch(Exception e){toast("No email app found.");}}).setNegativeButton("CLOSE",null).show();
  }
  void shareProfile(DocumentSnapshot u){
   String n=u.getString("name");if(n==null)n="GigSathi Adviser";String text=n+"\nSkills: "+String.valueOf(u.get("skills")==null?"":u.get("skills"))+"\nLocation: "+String.valueOf(u.get("location")==null?"":u.get("location"))+"\nContact: "+String.valueOf(u.get("phone")==null?"":u.get("phone"));
