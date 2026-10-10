@@ -3,6 +3,8 @@ package com.gigbiz.app;
 import android.app.*;
 import android.os.Bundle;
 import android.graphics.*;
+import android.graphics.pdf.PdfDocument;
+import java.io.OutputStream;
 import android.graphics.drawable.GradientDrawable;
 import android.view.*;
 import android.content.*;
@@ -258,6 +260,8 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
   TextView share=button("SHARE WORKER ID",green);add(root,share,52,12);share.setOnClickListener(v->shareDocument("Gigbiz Worker ID Card","GIGBIZ WORKER ID CARD\nName: "+shareName+"\nWorker ID: "+workerId+"\nMobile: "+sharePhone+"\nEmail: "+shareEmail+"\nSkills: "+shareSkills+"\nStatus: "+shareStatus+"\n\nDigital profile ID only; not a government identity document."));
   setContentView(root);
  }
+ String offerPdfText="";
+ @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode==714&&resultCode==RESULT_OK&&data!=null&&data.getData()!=null){try{PdfDocument pdf=new PdfDocument();Paint p=new Paint(3);p.setColor(Color.BLACK);p.setTextSize(12);PdfDocument.Page page=pdf.startPage(new PdfDocument.PageInfo.Builder(595,842,1).create());Canvas canvas=page.getCanvas();int y=50;p.setTextSize(17);p.setTypeface(Typeface.DEFAULT_BOLD);canvas.drawText("GREAT INDIA TECHNOLOGY / GIGBIZ",40,y,p);y+=30;p.setTextSize(12);p.setTypeface(Typeface.DEFAULT);for(String line:offerPdfText.split("\\n")){if(y>800)break;canvas.drawText(line.length()>90?line.substring(0,90):line,40,y,p);y+=20;}pdf.finishPage(page);OutputStream out=getContentResolver().openOutputStream(data.getData());if(out==null)throw new java.io.IOException("Cannot save PDF");pdf.writeTo(out);out.close();pdf.close();toast("Offer letter PDF saved.");}catch(Exception e){toast("PDF error: "+e.getMessage());}}}
  void workerOfferLetter(DocumentSnapshot u){
   String name=u.getString("name");if(name==null||name.trim().isEmpty())name="Worker";
   String email=auth.getCurrentUser().getEmail();if(email==null)email="";
@@ -271,6 +275,7 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
   TextView body=tv(letter.substring(letter.indexOf("Date:")),14,false);body.setPadding(dp(4),dp(12),dp(4),dp(12));box.addView(body);
   scroll.addView(box);LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,-2);bp.setMargins(dp(14),dp(14),dp(14),dp(8));root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
   TextView note=tv("Draft only — review and authorize before issuing as an official offer.",12,false);note.setTextColor(muted);note.setPadding(dp(16),dp(6),dp(16),dp(6));root.addView(note);
+  TextView pdf=button("DOWNLOAD OFFER LETTER PDF",purple);add(root,pdf,52,8);pdf.setOnClickListener(v->{offerPdfText=letter;Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/pdf");i.putExtra(Intent.EXTRA_TITLE,"Gigbiz_Worker_Offer_Letter_DRAFT.pdf");startActivityForResult(i,714);});
   TextView share=button("SHARE OFFER LETTER DRAFT",green);add(root,share,52,8);share.setOnClickListener(v->shareDocument("Gigbiz Worker Offer Letter Draft",letter));
   setContentView(root);
  }
