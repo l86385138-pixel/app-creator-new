@@ -324,13 +324,13 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
   }catch(Exception e){toast("PDF error: "+e.getMessage());}}
  }
  String idPdfText="";
- String offerPdfText=""; String offerPdfText="";
+ String offerPdfText="";
  void workerOfferLetter(DocumentSnapshot u){
   String name=u.getString("name");if(name==null||name.trim().isEmpty())name="Adviser";
   String email=auth.getCurrentUser().getEmail();if(email==null)email="";
   String phone=u.getString("phone");if(phone==null)phone="Not provided";
   String date=java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM,java.util.Locale.getDefault()).format(new java.util.Date());
-  String letter="GREAT INDIA TECHNOLOGY™ / GIGSATHI\nWORKER OFFER LETTER — DRAFT\nDate: "+date+"\n\nTo: "+name+"\nEmail: "+email+"\nMobile: "+phone+"\n\nDear "+name+",\n\nWe invite you to register your interest in performing eligible tasks and projects through the GigSathi platform. Work availability, task instructions, eligibility, verification and any payment are subject to the applicable task terms and review by the platform administrator.\n\nRole: Independent platform adviser / task participant\nWork type: Task- or project-based, as offered in the app\nPayment: Only the amount shown for a task that is completed and approved under its stated terms\n\nThis document is a draft template for review. It is not proof of employment, a guarantee of work, or a guarantee of income. It becomes an official offer only if separately reviewed and signed by an authorized representative with the final terms.\n\nRegards,\nLavkush R\nGreat India Technology™";
+  String letter="GREAT INDIA TECHNOLOGY™ / GIGSATHI\nADVISER OFFER LETTER — DRAFT\nDate: "+date+"\n\nTo: "+name+"\nEmail: "+email+"\nMobile: "+phone+"\n\nDear "+name+",\n\nWe invite you to register your interest in performing eligible tasks and projects through the GigSathi platform. Work availability, task instructions, eligibility, verification and any payment are subject to the applicable task terms and review by the platform administrator.\n\nRole: Independent platform adviser / task participant\nWork type: Task- or project-based, as offered in the app\nPayment: Only the amount shown for a task that is completed and approved under its stated terms\n\nThis document is a draft template for review. It is not proof of employment, a guarantee of work, or a guarantee of income. It becomes an official offer only if separately reviewed and signed by an authorized representative with the final terms.\n\nRegards,\nLavkush R\nGreat India Technology™";
   LinearLayout root=base();topBar(root,"Offer Letter");
   ScrollView scroll=new ScrollView(this);LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(18),dp(18),dp(18));box.setBackground(bg(white,12));
   TextView h=tv("GREAT INDIA TECHNOLOGY™",18,true);h.setTextColor(Color.rgb(8,42,91));box.addView(h);
