@@ -245,7 +245,7 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
   if(email==null&&auth.getCurrentUser()!=null)email=auth.getCurrentUser().getEmail();
   String photo=u.getString("workerPhotoUrl");
   if(photo==null||photo.trim().isEmpty())photo=getSharedPreferences("gigbiz",MODE_PRIVATE).getString("workerPhotoUrl","");
-  Uri.Builder b=Uri.parse("https://l86385138-pixel.github.io/app-creator-new/adviser-profile/index.html").buildUpon();
+  Uri.Builder b=Uri.parse("https://l86385138-pixel.github.io/app-creator-new/adviser-profile.html").buildUpon();
   b.appendQueryParameter("uid",u.getId());
   if(name!=null&&!name.trim().isEmpty())b.appendQueryParameter("name",name);
   if(phone!=null&&!phone.trim().isEmpty())b.appendQueryParameter("phone",phone);
