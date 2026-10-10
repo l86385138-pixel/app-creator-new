@@ -80,7 +80,7 @@ service cloud.firestore {
     match /teamMembers/{id} {
       allow read: if admin()
         || (worker() && resource.data.ownerId == request.auth.uid)
-        || (member() && resource.data.email == request.auth.token.email);
+        || (signedIn() && resource.data.email == request.auth.token.email);
       allow create: if worker()
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.name is string
