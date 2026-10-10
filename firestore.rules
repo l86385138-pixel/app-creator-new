@@ -55,13 +55,13 @@ service cloud.firestore {
       allow update,delete: if admin();
     }
     match /tasks/{id} {
-      allow read: if admin() || (worker() && resource.data.workerId == request.auth.uid);
-      allow create,update: if admin() || (worker() && request.resource.data.workerId == request.auth.uid);
+      allow read: if admin() || (worker() && resource.data.workerId == request.auth.uid) || (member() && resource.data.memberId == request.auth.uid);
+      allow create,update: if admin() || (worker() && request.resource.data.workerId == request.auth.uid) || (member() && resource.data.memberId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","completedBy","completedAt"]));
       allow delete: if admin();
     }
     match /leads/{id} {
-      allow read: if admin() || (worker() && resource.data.workerId == request.auth.uid);
-      allow create: if worker() && request.resource.data.workerId == request.auth.uid;
+      allow read: if admin() || (worker() && resource.data.workerId == request.auth.uid) || (member() && resource.data.memberId == request.auth.uid);
+      allow create: if (worker() && request.resource.data.workerId == request.auth.uid) || (member() && request.resource.data.memberId == request.auth.uid && request.resource.data.workerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ownerId);
       allow update,delete: if admin();
     }
     match /withdrawals/{id} {
@@ -79,7 +79,8 @@ service cloud.firestore {
     }
     match /teamMembers/{id} {
       allow read: if admin()
-        || (worker() && resource.data.ownerId == request.auth.uid);
+        || (worker() && resource.data.ownerId == request.auth.uid)
+        || (member() && resource.data.email == request.auth.token.email);
       allow create: if worker()
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.name is string
@@ -89,11 +90,14 @@ service cloud.firestore {
         && request.resource.data.phone.size() <= 20
         && request.resource.data.email is string
         && request.resource.data.memberRole is string
-        && request.resource.data.status == "added";
+        && request.resource.data.status in ["added", "invited"];
       allow update: if admin()
         || (worker()
           && resource.data.ownerId == request.auth.uid
-          && request.resource.data.ownerId == resource.data.ownerId);
+          && request.resource.data.ownerId == resource.data.ownerId)
+        || (member()
+          && resource.data.email == request.auth.token.email
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["memberUid","status","activatedAt"]));
       allow delete: if admin()
         || (worker() && resource.data.ownerId == request.auth.uid);
     }
