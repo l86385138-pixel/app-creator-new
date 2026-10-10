@@ -51,12 +51,13 @@ public class MainActivity extends Activity {
   for(EditText e:new EditText[]{name,email,phone,pass})add(r,e,53,8);
   TextView save=button("ACTIVATE ACCOUNT",purple);add(r,save,54,18);TextView back=tv("← Back",14,true);back.setGravity(Gravity.CENTER);add(r,back,42,8);back.setOnClickListener(v->memberAuthScreen(false));
   save.setOnClickListener(v->{String n=name.getText().toString().trim(),em=email.getText().toString().trim().toLowerCase(Locale.ROOT),ph=phone.getText().toString().trim(),pw=pass.getText().toString();if(n.length()<2||!emValid(em)||ph.replaceAll("\\D","").length()<10||pw.length()<6){toast("Enter valid name, invited email, mobile and 6+ character password.");return;}
-   db.collection("teamMembers").whereEqualTo("email",em).get().addOnSuccessListener(invites->{if(invites.isEmpty()){toast("Invitation not found. Ask your Team Owner to add this email first.");return;}DocumentSnapshot invite=invites.getDocuments().get(0);String owner=invite.getString("ownerId");if(owner==null||owner.isEmpty()){toast("This invitation is invalid. Ask your Team Owner to add you again.");return;}
-    if("active".equals(invite.getString("status"))&&invite.getString("memberUid")!=null){toast("This invitation has already been activated. Please log in.");return;}
-    auth.createUserWithEmailAndPassword(em,pw).addOnCompleteListener(created->{if(!created.isSuccessful()){toast(err(created.getException()));return;}String uid=auth.getCurrentUser().getUid();Map<String,Object> user=new HashMap<>();user.put("name",n);user.put("email",em);user.put("phone",ph);user.put("role","member");user.put("ownerId",owner);user.put("wallet",0);user.put("status","active");user.put("createdAt",FieldValue.serverTimestamp());
+   auth.createUserWithEmailAndPassword(em,pw).addOnCompleteListener(created->{if(!created.isSuccessful()){toast(err(created.getException()));return;}String uid=auth.getCurrentUser().getUid();
+    db.collection("teamMembers").whereEqualTo("email",em).get().addOnSuccessListener(invites->{if(invites.isEmpty()){auth.getCurrentUser().delete();toast("Invitation not found. Ask your Team Owner to add this email first.");return;}DocumentSnapshot invite=invites.getDocuments().get(0);String owner=invite.getString("ownerId");if(owner==null||owner.isEmpty()){auth.getCurrentUser().delete();toast("This invitation is invalid. Ask your Team Owner to add you again.");return;}
+     if("active".equals(invite.getString("status"))&&invite.getString("memberUid")!=null){auth.getCurrentUser().delete();toast("This invitation has already been activated. Please log in.");return;}
+     Map<String,Object> user=new HashMap<>();user.put("name",n);user.put("email",em);user.put("phone",ph);user.put("role","member");user.put("ownerId",owner);user.put("wallet",0);user.put("status","active");user.put("createdAt",FieldValue.serverTimestamp());
      db.collection("users").document(uid).set(user).addOnSuccessListener(done->db.collection("teamMembers").document(invite.getId()).update("memberUid",uid,"status","active","activatedAt",FieldValue.serverTimestamp()).addOnSuccessListener(z->boot()).addOnFailureListener(ex->{toast("Account created but invitation link update failed: "+err(ex));})).addOnFailureListener(ex->{toast("Unable to save member profile: "+err(ex));});
-    });
-   }).addOnFailureListener(ex->{toast("Unable to verify invitation: "+err(ex));});
+    }).addOnFailureListener(ex->{toast("Unable to verify invitation: "+err(ex));});
+   });
   });setContentView(r);
  }
  void memberHome(DocumentSnapshot u){
