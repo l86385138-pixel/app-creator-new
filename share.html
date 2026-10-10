@@ -84,7 +84,7 @@ async function submitForm(){
  const btn=document.getElementById("submit");btn.disabled=true;
  try{
    await anonymousReady;
-   await addDoc(collection(db,"leads"),{
+   const payload={
      workerId:workerId,
      workerName:workerName,
      gigId:gigId,
@@ -98,7 +98,10 @@ async function submitForm(){
      source:"customer_share",
      consent:true,
      createdAt:serverTimestamp()
-   });
+   };
+   // Submit as an anonymous customer lead. If Firestore rules reject this,
+   // show a helpful message without pretending the lead was saved.
+   await addDoc(collection(db,"leads"),payload);
    app.innerHTML='<div class="details"><h2>Submitted successfully ✅</h2><p>Your information has been sent to Gigbiz. The worker and Admin will review your lead.</p></div>';
    if(applyUrl)setTimeout(()=>location.href=applyUrl,1200);
  }catch(e){
