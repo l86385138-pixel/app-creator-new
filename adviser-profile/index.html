@@ -1,0 +1,243 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adviser Projects | Adwizor</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #172033;
+    }
+    header {
+      padding: 24px 16px;
+      background: #102a56;
+      color: white;
+      text-align: center;
+    }
+    header h1 { margin: 0 0 8px; }
+    header p { margin: 0; color: #d8e5ff; }
+    main { max-width: 1100px; margin: auto; padding: 22px 16px; }
+    #status {
+      text-align: center;
+      padding: 20px;
+      color: #475569;
+    }
+    #projects {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 18px;
+    }
+    .project {
+      background: white;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 18px #17203312;
+      border: 1px solid #e5eaf2;
+    }
+    .project img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      background: #e8eef7;
+    }
+    .project-content { padding: 16px; }
+    .project h2 { margin: 0 0 10px; font-size: 19px; }
+    .project p {
+      color: #596579;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+    .open-link {
+      display: inline-block;
+      padding: 11px 16px;
+      border-radius: 8px;
+      background: #175cd3;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .open-link:hover { background: #1249a9; }
+    footer {
+      text-align: center;
+      padding: 22px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Adviser Projects</h1>
+    <p>Explore projects associated with this adviser</p>
+  </header>
+
+  <main>
+    <div id="status">Loading projects...</div>
+    <section id="projects"></section>
+  </main>
+
+  <footer>Powered by Adwizor</footer>
+
+  <!-- Firebase compatibility SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <script>
+    /*
+      IMPORTANT:
+      Replace this object with the EXISTING Firebase web config
+      from the Adwizor website. Do not create a new Firebase project.
+    */
+    const firebaseConfig = {
+      apiKey: "PASTE_EXISTING_API_KEY",
+      authDomain: "PASTE_EXISTING_AUTH_DOMAIN",
+      projectId: "PASTE_EXISTING_PROJECT_ID",
+      storageBucket: "PASTE_EXISTING_STORAGE_BUCKET",
+      messagingSenderId: "PASTE_EXISTING_MESSAGING_SENDER_ID",
+      appId: "PASTE_EXISTING_APP_ID"
+    };
+
+    const statusEl = document.getElementById("status");
+    const projectsEl = document.getElementById("projects");
+
+    const params = new URLSearchParams(window.location.search);
+    const adviserUid = (params.get("uid") || "").trim();
+
+    function safeText(value, fallback = "") {
+      return typeof value === "string" ? value : fallback;
+    }
+
+    function projectImage(project) {
+      return safeText(
+        project.imageUrl ||
+        project.imageURL ||
+        project.image ||
+        project.thumbnail ||
+        project.photoURL,
+        ""
+      );
+    }
+
+    function projectLink(project) {
+      return safeText(
+        project.projectUrl ||
+        project.projectURL ||
+        project.url ||
+        project.link ||
+        project.website,
+        ""
+      );
+    }
+
+    function renderProject(doc) {
+      const project = doc.data();
+
+      const title = safeText(
+        project.projectName || project.name || project.title,
+        "Untitled Project"
+      );
+      const description = safeText(
+        project.description || project.details,
+        "No description available."
+      );
+      const image = projectImage(project);
+      const link = projectLink(project);
+
+      const card = document.createElement("article");
+      card.className = "project";
+
+      if (image) {
+        try {
+          const parsedImage = new URL(image);
+          if (parsedImage.protocol === "https:" ||
+              parsedImage.protocol === "http:") {
+            const img = document.createElement("img");
+            img.src = parsedImage.href;
+            img.alt = title;
+            img.loading = "lazy";
+            img.onerror = () => img.remove();
+            card.appendChild(img);
+          }
+        } catch (_) {}
+      }
+
+      const content = document.createElement("div");
+      content.className = "project-content";
+
+      const heading = document.createElement("h2");
+      heading.textContent = title;
+
+      const paragraph = document.createElement("p");
+      paragraph.textContent = description;
+
+      content.append(heading, paragraph);
+
+      if (link) {
+        try {
+          const parsedLink = new URL(link);
+          if (parsedLink.protocol === "https:" ||
+              parsedLink.protocol === "http:") {
+            const anchor = document.createElement("a");
+            anchor.className = "open-link";
+            anchor.href = parsedLink.href;
+            anchor.target = "_blank";
+            anchor.rel = "noopener noreferrer";
+            anchor.textContent = "Open Project";
+            content.appendChild(anchor);
+          }
+        } catch (_) {}
+      }
+
+      card.appendChild(content);
+      projectsEl.appendChild(card);
+    }
+
+    async function loadProjects() {
+      if (!adviserUid) {
+        statusEl.textContent =
+          "Adviser UID missing. Please open this page with ?uid=YOUR_ADVISER_UID";
+        return;
+      }
+
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+
+        const db = firebase.firestore();
+
+        /*
+          IMPORTANT:
+          Change "projects" and "adviserUid" below to match your
+          actual Firestore collection and adviser UID field.
+        */
+        const snapshot = await db.collection("projects")
+          .where("adviserUid", "==", adviserUid)
+          .get();
+
+        projectsEl.replaceChildren();
+
+        if (snapshot.empty) {
+          statusEl.textContent =
+            "No projects found for this adviser. Check the collection name, UID field and Firestore permissions.";
+          return;
+        }
+
+        snapshot.forEach(renderProject);
+        statusEl.textContent =
+          "Showing " + snapshot.size + " project(s).";
+      } catch (error) {
+        console.error("Project loading error:", error);
+        statusEl.textContent =
+          "Could not load projects. Check Firebase configuration, Firestore rules and collection/field names.";
+      }
+    }
+
+    loadProjects();
+  </script>
+</body>
+</html>
