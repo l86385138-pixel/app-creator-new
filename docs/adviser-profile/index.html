@@ -1,243 +1,89 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Adviser Projects | Adwizor</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f7fb;
-      color: #172033;
-    }
-    header {
-      padding: 24px 16px;
-      background: #102a56;
-      color: white;
-      text-align: center;
-    }
-    header h1 { margin: 0 0 8px; }
-    header p { margin: 0; color: #d8e5ff; }
-    main { max-width: 1100px; margin: auto; padding: 22px 16px; }
-    #status {
-      text-align: center;
-      padding: 20px;
-      color: #475569;
-    }
-    #projects {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 18px;
-    }
-    .project {
-      background: white;
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 4px 18px #17203312;
-      border: 1px solid #e5eaf2;
-    }
-    .project img {
-      width: 100%;
-      height: 180px;
-      object-fit: cover;
-      background: #e8eef7;
-    }
-    .project-content { padding: 16px; }
-    .project h2 { margin: 0 0 10px; font-size: 19px; }
-    .project p {
-      color: #596579;
-      line-height: 1.55;
-      overflow-wrap: anywhere;
-    }
-    .open-link {
-      display: inline-block;
-      padding: 11px 16px;
-      border-radius: 8px;
-      background: #175cd3;
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .open-link:hover { background: #1249a9; }
-    footer {
-      text-align: center;
-      padding: 22px;
-      color: #64748b;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#123c35">
+<title>Adviser Profile | Adwizor</title>
+<style>
+:root{--green:#123c35;--mint:#e8f4ef;--gold:#d5a84f;--ink:#172522;--muted:#60716b;--line:#e0e9e4;--white:#fff}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f8f6;color:var(--ink);line-height:1.6}
+header{background:linear-gradient(130deg,#123c35,#206b58);color:#fff;padding:20px 18px}
+.top{max-width:1000px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-size:21px;font-weight:800;letter-spacing:.3px}.brand span{color:#f2cf7c}
+button,.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.top button{background:#fff;color:var(--green)}main{max-width:1000px;margin:26px auto;padding:0 16px}
+.hero{background:#fff;border:1px solid var(--line);border-radius:22px;padding:28px;display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:center;box-shadow:0 10px 35px #153a2b0b}
+.photo-wrap{width:200px;height:200px;margin:auto;border-radius:50%;padding:6px;background:var(--mint);border:3px solid #d3e6dc;overflow:hidden}
+#photo{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;background:#e6eee9}
+.eyebrow{color:#23715d;font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}.hero h1{font-size:clamp(27px,4vw,39px);line-height:1.15;margin:8px 0}.role{font-size:18px;color:#2a6b59;font-weight:700;margin:0 0 12px}.intro{color:var(--muted);margin:0 0 20px}.actions{display:flex;flex-wrap:wrap;gap:10px}.primary{background:var(--green);color:white}.secondary{background:var(--mint);color:var(--green)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}.panel h2{font-size:18px;margin:0 0 13px;display:flex;align-items:center;gap:9px}.panel h2:before{content:"";width:5px;height:22px;border-radius:5px;background:var(--gold);display:inline-block}
+.info{display:grid;grid-template-columns:130px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #edf1ee;overflow-wrap:anywhere}.info:last-child{border-bottom:0}.label{color:var(--muted);font-size:14px}.value{font-weight:600;white-space:pre-wrap}.wide{grid-column:1/-1}.service-list{display:flex;flex-wrap:wrap;gap:9px}.chip{background:var(--mint);color:#205b4c;padding:7px 11px;border-radius:20px;font-size:13px;font-weight:700}
+#editor{display:none;background:#fff;border:2px solid #c7e1d5;border-radius:18px;padding:22px;margin-top:18px}#editor.open{display:block}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:13px;font-weight:700;color:#40564e}.field input,.field textarea{font:inherit;border:1px solid #ccd9d1;border-radius:9px;padding:10px 11px;width:100%;background:#fff}.field textarea{min-height:90px;resize:vertical}.hint{font-size:12px;color:var(--muted);margin:12px 0}.editor-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}.save{background:var(--green);color:#fff}.cancel{background:#edf2ef;color:#31483f}.status{color:#267052;font-size:13px;margin-top:10px}
+footer{text-align:center;color:#74837c;padding:28px 16px;font-size:13px}
+@media(max-width:650px){.hero{grid-template-columns:1fr;text-align:center;padding:22px 17px;gap:18px}.photo-wrap{width:170px;height:170px}.actions{justify-content:center}.grid{grid-template-columns:1fr}.wide{grid-column:auto}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.info{grid-template-columns:110px 1fr}.top{align-items:flex-start}.brand{font-size:19px}}
+</style>
 </head>
 <body>
-  <header>
-    <h1>Adviser Projects</h1>
-    <p>Explore projects associated with this adviser</p>
-  </header>
-
-  <main>
-    <div id="status">Loading projects...</div>
-    <section id="projects"></section>
-  </main>
-
-  <footer>Powered by Adwizor</footer>
-
-  <!-- Firebase compatibility SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
-  <script>
-    /*
-      IMPORTANT:
-      Replace this object with the EXISTING Firebase web config
-      from the Adwizor website. Do not create a new Firebase project.
-    */
-    const firebaseConfig = {
-      apiKey: "PASTE_EXISTING_API_KEY",
-      authDomain: "PASTE_EXISTING_AUTH_DOMAIN",
-      projectId: "PASTE_EXISTING_PROJECT_ID",
-      storageBucket: "PASTE_EXISTING_STORAGE_BUCKET",
-      messagingSenderId: "PASTE_EXISTING_MESSAGING_SENDER_ID",
-      appId: "PASTE_EXISTING_APP_ID"
-    };
-
-    const statusEl = document.getElementById("status");
-    const projectsEl = document.getElementById("projects");
-
-    const params = new URLSearchParams(window.location.search);
-    const adviserUid = (params.get("uid") || "").trim();
-
-    function safeText(value, fallback = "") {
-      return typeof value === "string" ? value : fallback;
-    }
-
-    function projectImage(project) {
-      return safeText(
-        project.imageUrl ||
-        project.imageURL ||
-        project.image ||
-        project.thumbnail ||
-        project.photoURL,
-        ""
-      );
-    }
-
-    function projectLink(project) {
-      return safeText(
-        project.projectUrl ||
-        project.projectURL ||
-        project.url ||
-        project.link ||
-        project.website,
-        ""
-      );
-    }
-
-    function renderProject(doc) {
-      const project = doc.data();
-
-      const title = safeText(
-        project.projectName || project.name || project.title,
-        "Untitled Project"
-      );
-      const description = safeText(
-        project.description || project.details,
-        "No description available."
-      );
-      const image = projectImage(project);
-      const link = projectLink(project);
-
-      const card = document.createElement("article");
-      card.className = "project";
-
-      if (image) {
-        try {
-          const parsedImage = new URL(image);
-          if (parsedImage.protocol === "https:" ||
-              parsedImage.protocol === "http:") {
-            const img = document.createElement("img");
-            img.src = parsedImage.href;
-            img.alt = title;
-            img.loading = "lazy";
-            img.onerror = () => img.remove();
-            card.appendChild(img);
-          }
-        } catch (_) {}
-      }
-
-      const content = document.createElement("div");
-      content.className = "project-content";
-
-      const heading = document.createElement("h2");
-      heading.textContent = title;
-
-      const paragraph = document.createElement("p");
-      paragraph.textContent = description;
-
-      content.append(heading, paragraph);
-
-      if (link) {
-        try {
-          const parsedLink = new URL(link);
-          if (parsedLink.protocol === "https:" ||
-              parsedLink.protocol === "http:") {
-            const anchor = document.createElement("a");
-            anchor.className = "open-link";
-            anchor.href = parsedLink.href;
-            anchor.target = "_blank";
-            anchor.rel = "noopener noreferrer";
-            anchor.textContent = "Open Project";
-            content.appendChild(anchor);
-          }
-        } catch (_) {}
-      }
-
-      card.appendChild(content);
-      projectsEl.appendChild(card);
-    }
-
-    async function loadProjects() {
-      if (!adviserUid) {
-        statusEl.textContent =
-          "Adviser UID missing. Please open this page with ?uid=YOUR_ADVISER_UID";
-        return;
-      }
-
-      try {
-        if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-        }
-
-        const db = firebase.firestore();
-
-        /*
-          IMPORTANT:
-          Change "projects" and "adviserUid" below to match your
-          actual Firestore collection and adviser UID field.
-        */
-        const snapshot = await db.collection("projects")
-          .where("adviserUid", "==", adviserUid)
-          .get();
-
-        projectsEl.replaceChildren();
-
-        if (snapshot.empty) {
-          statusEl.textContent =
-            "No projects found for this adviser. Check the collection name, UID field and Firestore permissions.";
-          return;
-        }
-
-        snapshot.forEach(renderProject);
-        statusEl.textContent =
-          "Showing " + snapshot.size + " project(s).";
-      } catch (error) {
-        console.error("Project loading error:", error);
-        statusEl.textContent =
-          "Could not load projects. Check Firebase configuration, Firestore rules and collection/field names.";
-      }
-    }
-
-    loadProjects();
-  </script>
+<header><div class="top"><div class="brand">AD<span>WIZOR</span></div><button type="button" id="editToggle">✎ Edit Profile</button></div></header>
+<main>
+<section class="hero">
+  <div><div class="photo-wrap"><img id="photo" alt="Adviser profile photo" src="https://placehold.co/400x400/e5eee8/245747?text=Adviser+Photo"></div></div>
+  <div><div class="eyebrow">Professional Adviser Profile</div><h1 id="name">Adviser Name</h1><p class="role" id="designation">Financial Adviser</p><p class="intro" id="summary">Add a short introduction about the adviser, experience, and how they help clients.</p><div class="actions"><a class="btn primary" id="callBtn" href="tel:+910000000000">☎ Call Adviser</a><a class="btn secondary" id="waBtn" href="https://wa.me/910000000000" target="_blank" rel="noopener noreferrer">WhatsApp</a></div></div>
+</section>
+<div class="grid">
+<section class="panel"><h2>Personal Information</h2><div class="info"><span class="label">Full name</span><span class="value" id="vName">Add adviser name</span></div><div class="info"><span class="label">Designation</span><span class="value" id="vDesignation">Financial Adviser</span></div><div class="info"><span class="label">Experience</span><span class="value" id="vExperience">Add years of experience</span></div><div class="info"><span class="label">Qualification</span><span class="value" id="vQualification">Add qualifications</span></div></section>
+<section class="panel"><h2>Contact Details</h2><div class="info"><span class="label">Phone</span><span class="value" id="vPhone">Add phone number</span></div><div class="info"><span class="label">Email</span><span class="value" id="vEmail">Add email address</span></div><div class="info"><span class="label">Office address</span><span class="value" id="vAddress">Add office address</span></div><div class="info"><span class="label">Working hours</span><span class="value" id="vHours">Add working hours</span></div></section>
+<section class="panel"><h2>About the Adviser</h2><p id="vAbout" class="value">Write the adviser's background, professional approach, areas of expertise, and the type of clients they support.</p></section>
+<section class="panel"><h2>Services Offered</h2><div id="vServices" class="service-list"><span class="chip">Add service 1</span><span class="chip">Add service 2</span><span class="chip">Add service 3</span></div></section>
+<section class="panel wide"><h2>Important Information</h2><p id="vExtra">Add any relevant registration details, service limitations, appointment process, or client instructions here. Only publish details that have been verified.</p></section>
+</div>
+<section id="editor">
+<h2 style="margin-top:0">Update Adviser Details</h2>
+<p class="hint">Details entered here are saved only in this browser. To publish them for everyone, these values must be saved to the website/database or added to the site files.</p>
+<div class="form-grid">
+<div class="field"><label for="iName">Full name</label><input id="iName" placeholder="Adviser full name"></div>
+<div class="field"><label for="iDesignation">Designation</label><input id="iDesignation" placeholder="Financial Adviser"></div>
+<div class="field"><label for="iExperience">Experience</label><input id="iExperience" placeholder="e.g. 5 years"></div>
+<div class="field"><label for="iQualification">Qualification</label><input id="iQualification" placeholder="e.g. B.Com, CFP"></div>
+<div class="field"><label for="iPhone">Phone number (with country code)</label><input id="iPhone" placeholder="+91 98765 43210"></div>
+<div class="field"><label for="iEmail">Email</label><input id="iEmail" type="email" placeholder="name@example.com"></div>
+<div class="field full"><label for="iAddress">Office address</label><input id="iAddress" placeholder="Full office address"></div>
+<div class="field"><label for="iHours">Working hours</label><input id="iHours" placeholder="Mon–Sat, 10 AM–6 PM"></div>
+<div class="field"><label for="iPhoto">Photo URL (optional)</label><input id="iPhoto" type="url" placeholder="https://..."></div>
+<div class="field full"><label for="iUpload">Or choose adviser photo from this device</label><input id="iUpload" type="file" accept="image/*"></div>
+<div class="field full"><label for="iSummary">Short introduction</label><textarea id="iSummary" placeholder="A short profile summary"></textarea></div>
+<div class="field full"><label for="iAbout">About the adviser</label><textarea id="iAbout" placeholder="Background, expertise and approach"></textarea></div>
+<div class="field full"><label for="iServices">Services (separate with commas)</label><input id="iServices" placeholder="Financial planning, Investment guidance, Retirement planning"></div>
+<div class="field full"><label for="iExtra">Additional information / disclaimer</label><textarea id="iExtra" placeholder="Verified registration information or important client instructions"></textarea></div>
+</div>
+<div class="editor-actions"><button class="save" id="saveBtn" type="button">Save on This Browser</button><button class="cancel" id="cancelBtn" type="button">Close Editor</button></div><div class="status" id="saveStatus" role="status"></div>
+</section>
+</main>
+<footer>Adwizor · Adviser profile</footer>
+<script>
+const ids=["name","designation","experience","qualification","phone","email","address","hours","summary","about","services","extra","photoUrl"];
+const defaults={name:"Adviser Name",designation:"Financial Adviser",experience:"Add years of experience",qualification:"Add qualifications",phone:"",email:"",address:"Add office address",hours:"Add working hours",summary:"Add a short introduction about the adviser, experience, and how they help clients.",about:"Write the adviser's background, professional approach, areas of expertise, and the type of clients they support.",services:"Add service 1, Add service 2, Add service 3",extra:"Add any relevant registration details, service limitations, appointment process, or client instructions here. Only publish details that have been verified.",photoUrl:""};
+let photoData="";
+const $=id=>document.getElementById(id);
+function render(d){
+$("name").textContent=d.name||"Adviser Name";$("designation").textContent=d.designation||"Financial Adviser";
+$("vName").textContent=d.name||"Add adviser name";$("vDesignation").textContent=d.designation||"Financial Adviser";
+$("vExperience").textContent=d.experience||"Not provided";$("vQualification").textContent=d.qualification||"Not provided";
+$("vPhone").textContent=d.phone||"Not provided";$("vEmail").textContent=d.email||"Not provided";$("vAddress").textContent=d.address||"Not provided";$("vHours").textContent=d.hours||"Not provided";
+$("summary").textContent=d.summary||"Profile introduction not added.";$("vAbout").textContent=d.about||"About information not added.";$("vExtra").textContent=d.extra||"No additional information provided.";
+$("vServices").replaceChildren();(d.services||"").split(",").map(x=>x.trim()).filter(Boolean).forEach(s=>{const el=document.createElement("span");el.className="chip";el.textContent=s;$("vServices").appendChild(el)});
+const ph=d.phone||"";$("callBtn").href=ph?"tel:"+ph.replace(/[^+\d]/g,""):"#";const digits=ph.replace(/\D/g,"");$("waBtn").href=digits?"https://wa.me/"+digits:"#";
+const photo=d.photoUrl||photoData;$("photo").src=photo||"https://placehold.co/400x400/e5eee8/245747?text=Adviser+Photo";
+}
+function current(){return {name:$("iName").value.trim(),designation:$("iDesignation").value.trim(),experience:$("iExperience").value.trim(),qualification:$("iQualification").value.trim(),phone:$("iPhone").value.trim(),email:$("iEmail").value.trim(),address:$("iAddress").value.trim(),hours:$("iHours").value.trim(),summary:$("iSummary").value.trim(),about:$("iAbout").value.trim(),services:$("iServices").value.trim(),extra:$("iExtra").value.trim(),photoUrl:$("iPhoto").value.trim()}}
+function fill(d){$("iName").value=d.name||"";$("iDesignation").value=d.designation||"";$("iExperience").value=d.experience||"";$("iQualification").value=d.qualification||"";$("iPhone").value=d.phone||"";$("iEmail").value=d.email||"";$("iAddress").value=d.address||"";$("iHours").value=d.hours||"";$("iSummary").value=d.summary||"";$("iAbout").value=d.about||"";$("iServices").value=d.services||"";$("iExtra").value=d.extra||"";$("iPhoto").value=d.photoUrl||""}
+let data={...defaults};
+try{const saved=localStorage.getItem("adwizor-adviser-profile");if(saved)data={...data,...JSON.parse(saved)}}catch(e){}
+render(data);fill(data);
+$("editToggle").addEventListener("click",()=>{$("editor").classList.toggle("open");if($("editor").classList.contains("open"))$("editor").scrollIntoView({behavior:"smooth",block:"start"})});
+$("iUpload").addEventListener("change",e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(!file.type.startsWith("image/")){alert("Please select an image file.");return}const reader=new FileReader();reader.onload=()=>{photoData=reader.result;$("photo").src=photoData;$("saveStatus").textContent="Photo preview updated. For a public website, upload this photo to website storage and use its public URL."};reader.readAsDataURL(file)});
+$("saveBtn").addEventListener("click",()=>{const d=current();if(!d.name){$("saveStatus").textContent="Please enter the adviser's full name.";return}render(d);try{localStorage.setItem("adwizor-adviser-profile",JSON.stringify(d));$("saveStatus").textContent="Profile saved in this browser only. Visitors on other devices will not see these changes yet."}catch(e){$("saveStatus").textContent="Could not save in this browser. Use a photo URL and shorter text, then try again."}});
+$("cancelBtn").addEventListener("click",()=>{$("editor").classList.remove("open")});
+</script>
 </body>
 </html>
