@@ -1,3 +1,4 @@
+// REBUILD WINDOWS ORIGINAL INSTALLER
 // STORAGE-FREE ADMIN PATCH: offers use Firestore text, marketing uses external HTTPS links, withdrawals store transaction references.
 const { initializeApp } = require('firebase/app');
 const { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } = require('firebase/auth');
