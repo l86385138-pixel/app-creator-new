@@ -241,21 +241,12 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
  View profileTile(String icon,String label){LinearLayout x=new LinearLayout(this);x.setOrientation(1);x.setGravity(Gravity.CENTER);x.setBackground(stroke(white,1,20));x.setElevation(dp(1));TextView i=tv(icon,25,true);i.setTextColor(Color.rgb(30,126,225));i.setGravity(Gravity.CENTER);i.setBackground(bg(Color.rgb(234,242,255),12));x.addView(i,new LinearLayout.LayoutParams(dp(48),dp(48)));TextView t=tv(label,15,true);t.setGravity(Gravity.CENTER);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(10);x.addView(t,p);return x;}
  void openHostedAdviserWebsite(DocumentSnapshot u){
   if(auth.getCurrentUser()==null){toast("Please login first.");return;}
-  String name=u.getString("name"),phone=u.getString("phone"),email=u.getString("email"),location=u.getString("location"),skills=u.getString("skills"),qualification=u.getString("qualification"),experience=u.getString("experience");
-  if(email==null&&auth.getCurrentUser()!=null)email=auth.getCurrentUser().getEmail();
-  String photo=u.getString("workerPhotoUrl");
-  if(photo==null||photo.trim().isEmpty())photo=getSharedPreferences("gigbiz",MODE_PRIVATE).getString("workerPhotoUrl","");
-  Uri.Builder b=Uri.parse("https://l86385138-pixel.github.io/app-creator-new/adviser-profile.html").buildUpon();
-  b.appendQueryParameter("uid",u.getId());
-  if(name!=null&&!name.trim().isEmpty())b.appendQueryParameter("name",name);
-  if(phone!=null&&!phone.trim().isEmpty())b.appendQueryParameter("phone",phone);
-  if(email!=null&&!email.trim().isEmpty())b.appendQueryParameter("email",email);
-  if(location!=null&&!location.trim().isEmpty())b.appendQueryParameter("location",location);
-  if(skills!=null&&!skills.trim().isEmpty())b.appendQueryParameter("skills",skills);
-  if(qualification!=null&&!qualification.trim().isEmpty())b.appendQueryParameter("qualification",qualification);
-  if(experience!=null&&!experience.trim().isEmpty())b.appendQueryParameter("experience",experience);
-  if(photo!=null&&!photo.trim().isEmpty())b.appendQueryParameter("photo",photo);
-  try{startActivity(new Intent(Intent.ACTION_VIEW,b.build()));}catch(Exception e){toast("Could not open Adviser Profile page");}
+  String adviserUid=u.getId();
+  Uri url=Uri.parse("https://adwizor.in/finAdvisor").buildUpon()
+    .appendQueryParameter("uid",adviserUid)
+    .build();
+  try{startActivity(new Intent(Intent.ACTION_VIEW,url));}
+  catch(Exception e){toast("Could not open Adviser Website");}
  }
  void adviserPublicProfile(DocumentSnapshot u){
   if(auth.getCurrentUser()==null){toast("Please login first.");return;}
