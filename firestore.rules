@@ -1,6 +1,7 @@
 rules_version = '2';
 
 service cloud.firestore {
+  // TRAINING/MARKETING PERMISSION FIX: these rules must also be published in Firebase Console.
   match /databases/{database}/documents {
     function signedIn(){ return request.auth != null; }
     function me(){ return /databases/$(database)/documents/users/$(request.auth.uid); }
