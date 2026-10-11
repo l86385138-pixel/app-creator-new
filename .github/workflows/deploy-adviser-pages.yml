@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'docs/adviser-profile/**'
+      - 'android/app/src/main/java/com/gigbiz/app/MainActivity.java'
       - '.github/workflows/deploy-adviser-pages.yml'
   workflow_dispatch:
 permissions:
