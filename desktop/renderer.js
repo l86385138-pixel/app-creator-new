@@ -1,3 +1,4 @@
+// STORAGE-FREE ADMIN PATCH: offers use Firestore text, marketing uses external HTTPS links, withdrawals store transaction references.
 const { initializeApp } = require('firebase/app');
 const { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } = require('firebase/auth');
 const { getFirestore, collection, getDocs, getDoc, doc, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp, runTransaction } = require('firebase/firestore');
