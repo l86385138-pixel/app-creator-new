@@ -242,7 +242,7 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
  void openHostedAdviserWebsite(DocumentSnapshot u){
   if(auth.getCurrentUser()==null){toast("Please login first.");return;}
   String adviserUid=u.getId();
-  Uri url=Uri.parse("https://adwizor.in/finAdvisor").buildUpon()
+  Uri url=Uri.parse("https://l86385138-pixel.github.io/app-creator-new/adviser-profile/").buildUpon()
     .appendQueryParameter("uid",adviserUid)
     .build();
   try{startActivity(new Intent(Intent.ACTION_VIEW,url));}
