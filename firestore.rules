@@ -49,6 +49,7 @@ service cloud.firestore {
     }
     match /categories/{id} { allow read: if signedIn(); allow create,update,delete: if admin(); }
     match /trainings/{id} { allow read: if signedIn(); allow create,update,delete: if admin(); }
+    match /marketingMaterials/{id} { allow read: if signedIn(); allow create,update,delete: if admin(); }
     match /services/{id} { allow read: if signedIn(); allow create,update,delete: if admin(); }
     match /applications/{id} {
       allow read: if admin() || (worker() && resource.data.workerId == request.auth.uid);
