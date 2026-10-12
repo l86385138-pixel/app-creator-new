@@ -5,7 +5,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn(){ return request.auth != null; }
     function me(){ return /databases/$(database)/documents/users/$(request.auth.uid); }
-    function admin(){ return signedIn() && exists(me()) && get(me()).data.role == "admin"; }
+    function admin(){ return signedIn() && ((request.auth.token.admin == true) || (exists(me()) && get(me()).data.role in ["admin", "Admin", "ADMIN"])); }
     function worker(){ return signedIn() && exists(me()) && get(me()).data.role == "worker"; }
     function member(){ return signedIn() && exists(me()) && get(me()).data.role == "member"; }
     function validWithdrawalDebit(uid, oldUser, newUser) {
