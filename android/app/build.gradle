@@ -3,7 +3,8 @@ plugins {
     id 'com.google.gms.google-services'
 }
 android {
-    namespace 'technology.greatindia.gigsathi'
+    // Keep the existing Java source package for R/resources compatibility.
+    namespace 'com.gigbiz.app'
     compileSdk 35
     defaultConfig {
         applicationId 'technology.greatindia.gigsathi'
