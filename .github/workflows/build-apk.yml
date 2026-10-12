@@ -1,4 +1,4 @@
-name: Build Gigbiz Release APK and AAB
+name: Build GigSathi Release APK and AAB
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Gigbiz Android Release
+    name: Build GigSathi Android Release
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -28,12 +28,21 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Check Firebase app configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -q '"package_name": "technology.greatindia.gigsathi"' android/app/google-services.json; then
+            echo "::error::android/app/google-services.json must be downloaded from Firebase for Android package technology.greatindia.gigsathi."
+            exit 1
+          fi
+
       - name: Generate temporary release signing key
         working-directory: android
         shell: bash
         run: |
           set -euo pipefail
-          keytool -genkeypair             -v             -keystore release-keystore.jks             -alias appcreator             -keyalg RSA             -keysize 2048             -validity 10000             -storepass android             -keypass android             -dname "CN=Gigbiz, OU=Android, O=App Creator, L=Gaya, ST=Bihar, C=IN"
+          keytool -genkeypair -v -keystore release-keystore.jks -alias appcreator -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=GigSathi, OU=Android, O=Great India Technology, L=Gaya, ST=Bihar, C=IN"
 
       - name: Build Release APK
         working-directory: android
@@ -52,7 +61,7 @@ jobs:
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: gigbiz-release-apk
+          name: gigsathi-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
@@ -60,7 +69,7 @@ jobs:
       - name: Upload Release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: gigbiz-release-aab
+          name: gigsathi-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 30
