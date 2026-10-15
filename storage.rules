@@ -1,25 +1,10 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    function signedIn() { return request.auth != null; }
-    function isAdmin() {
-      return signedIn() &&
-        (request.auth.token.admin == true ||
-         (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-          firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'Admin', 'ADMIN']));
-    }
-    match /withdrawals/{withdrawalId}/{fileName} {
-      function withdrawal() {
-        return firestore.exists(/databases/(default)/documents/withdrawals/$(withdrawalId));
-      }
-      function owner() {
-        return signedIn() && withdrawal() &&
-          firestore.get(/databases/(default)/documents/withdrawals/$(withdrawalId)).data.workerId == request.auth.uid;
-      }
-      allow read: if isAdmin() || owner();
-      allow write: if isAdmin() && request.resource != null &&
-        request.resource.size < 8 * 1024 * 1024 &&
-        request.resource.contentType.matches('image/(jpeg|png|webp)|application/pdf');
+    // GigSathi uses Firestore paymentReference/UTR fields instead of Firebase Storage uploads.
+    // Default-deny all file access until a Storage-backed receipt workflow is intentionally enabled.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
