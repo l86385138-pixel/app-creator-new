@@ -98,6 +98,46 @@ service cloud.firestore {
         && request.resource.data.workerId == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0
+        && request.resource.data.accountNumber is string
+        && request.resource.data.accountNumber.size() >= 6
+        && request.resource.data.bankName is string
+        && request.resource.data.bankName.size() >= 2
+        && request.resource.data.ifscCode is string
+        && request.resource.data.ifscCode.matches('^[A-Z]{4}0[A-Z0-9]{6}
+      allow update,delete: if admin();
+    }
+    match /teamMembers/{id} {
+      allow read: if admin()
+        || (worker() && resource.data.ownerId == request.auth.uid)
+        || (signedIn() && resource.data.email == request.auth.token.email);
+      allow create: if worker()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 10
+        && request.resource.data.phone.size() <= 20
+        && request.resource.data.email is string
+        && request.resource.data.memberRole is string
+        && request.resource.data.status in ["added", "invited"];
+      allow update: if admin()
+        || (worker()
+          && resource.data.ownerId == request.auth.uid
+          && request.resource.data.ownerId == resource.data.ownerId)
+        || (member()
+          && resource.data.email == request.auth.token.email
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["memberUid","status","activatedAt"]));
+      allow delete: if admin()
+        || (worker() && resource.data.ownerId == request.auth.uid);
+    }
+
+    match /activity/{id} {
+      allow read: if admin() || (worker() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+    match /{document=**} { allow read,write: if false; }
+  }
+})
         && request.resource.data.status == "pending"
         && request.resource.data.requestId is string
         && request.resource.data.requestId == request.resource.id
