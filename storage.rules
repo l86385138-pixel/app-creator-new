@@ -1,8 +1,32 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // GigSathi uses Firestore paymentReference/UTR fields instead of Firebase Storage uploads.
-    // Default-deny all file access until a Storage-backed receipt workflow is intentionally enabled.
+    function signedIn() { return request.auth != null; }
+    function admin() {
+      return signedIn() &&
+        (request.auth.token.admin == true ||
+         (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+          firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'Admin', 'ADMIN']) ||
+         (firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)) &&
+          firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.role == 'admin' &&
+          firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.isActive == true));
+    }
+    match /withdrawals/{withdrawalId}/{fileName} {
+      function existsWithdrawal() {
+        return firestore.exists(/databases/(default)/documents/withdrawals/$(withdrawalId));
+      }
+      function owner() {
+        return signedIn() && existsWithdrawal() &&
+          firestore.get(/databases/(default)/documents/withdrawals/$(withdrawalId)).data.workerId == request.auth.uid;
+      }
+      allow read: if admin() || owner();
+      allow create, update: if admin() &&
+        request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size <= 8 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp)|application/pdf');
+      allow delete: if admin();
+    }
     match /{allPaths=**} {
       allow read, write: if false;
     }
