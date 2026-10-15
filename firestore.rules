@@ -126,6 +126,8 @@ service cloud.firestore {
             && request.resource.data.upiId.matches('^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$'))
           ||
           (request.resource.data.paymentMethod == "BANK ACCOUNT"
+            && request.resource.data.accountHolder.size() >= 2
+            && request.resource.data.accountHolder.size() <= 100
             && request.resource.data.accountNumber.matches('^[0-9]{6,24}$')
             && request.resource.data.bankName.size() >= 2
             && request.resource.data.bankName.size() <= 100
