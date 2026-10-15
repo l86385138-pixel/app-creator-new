@@ -18,6 +18,7 @@ service cloud.firestore {
         && newUser.wallet is number
         && newUser.wallet >= 0
         && newUser.wallet < oldUser.wallet
+        && newUser.diff(oldUser).affectedKeys().hasOnly(["wallet", "updatedAt", "lastWithdrawalRequestId"])
         && wid is string
         && existsAfter(withdrawalPath)
         && getAfter(withdrawalPath).data.workerId == uid
