@@ -5,7 +5,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn(){ return request.auth != null; }
     function me(){ return /databases/$(database)/documents/users/$(request.auth.uid); }
-    function admin(){ return signedIn() && ((request.auth.token.admin == true) || (exists(me()) && get(me()).data.role in ["admin", "Admin", "ADMIN"])); }
+    function admin(){ return signedIn() && ((request.auth.token.admin == true) || (exists(me()) && get(me()).data.role in ["admin", "Admin", "ADMIN"]) || (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "admin" && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isActive == true)); }
     function worker(){ return signedIn() && exists(me()) && get(me()).data.role == "worker"; }
     function member(){ return signedIn() && exists(me()) && get(me()).data.role == "member"; }
     function validWithdrawalDebit(uid, oldUser, newUser) {
@@ -127,12 +127,22 @@ service cloud.firestore {
         && request.resource.data.workerId == resource.data.workerId
         && request.resource.data.amount == resource.data.amount
         && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.accountNumber == resource.data.accountNumber
+        && request.resource.data.bankName == resource.data.bankName
+        && request.resource.data.ifscCode == resource.data.ifscCode
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status", "proofUrl", "proofPath", "proofFileName", "proofUploadedAt",
+          "proofUploadedBy", "paymentReference", "paymentReferenceRecordedAt",
+          "approvedAt", "approvedBy", "paidAt", "paidBy", "rejectedAt",
+          "rejectedBy", "updatedAt", "processedBy", "adminNote"
+        ])
         && (
           (resource.data.status == "pending"
             && request.resource.data.status in ["processing", "rejected"])
           || (resource.data.status == "processing"
-            && request.resource.data.status in ["paid", "rejected"])
-        );
+            && request.resource.data.status in ["processing", "paid", "rejected"])
+        )
+        && (request.resource.data.status != "paid" || request.resource.data.proofUrl is string);
       allow delete: if admin() && resource.data.status == "pending";
     }
 
@@ -167,4 +177,4 @@ service cloud.firestore {
     }
     match /{document=**} { allow read,write: if false; }
   }
-})
+}
