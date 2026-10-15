@@ -100,19 +100,36 @@ service cloud.firestore {
       function userAfter() {
         return getAfter(/databases/$(database)/documents/users/$(request.auth.uid));
       }
-      allow read: if admin() || ((worker() || member()) && resource.data.workerId == request.auth.uid);
+
+      allow read: if admin()
+        || ((worker() || member()) && resource.data.workerId == request.auth.uid);
+
       allow create: if signedIn()
         && (worker() || member())
         && request.resource.data.keys().hasOnly([
-          "workerId", "workerEmail", "amount", "accountNumber", "bankName",
-          "ifscCode", "status", "createdAt", "requestId"
+          "workerId", "workerEmail", "amount", "paymentMethod", "transferType",
+          "upiId", "accountNumber", "bankName", "ifscCode", "status",
+          "createdAt", "requestId"
         ])
         && request.resource.data.workerId == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0
+        && request.resource.data.paymentMethod in ["UPI", "BANK ACCOUNT"]
+        && request.resource.data.transferType in ["IMPS", "NEFT"]
+        && request.resource.data.upiId is string
+        && request.resource.data.accountNumber is string
+        && request.resource.data.bankName is string
+        && request.resource.data.ifscCode is string
         && (
           (request.resource.data.paymentMethod == "UPI"
-            && request.resource.data.upiId.matches('^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}
+            && request.resource.data.upiId.matches('^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$'))
+          ||
+          (request.resource.data.paymentMethod == "BANK ACCOUNT"
+            && request.resource.data.accountNumber.matches('^[0-9]{6,24}$')
+            && request.resource.data.bankName.size() >= 2
+            && request.resource.data.bankName.size() <= 100
+            && request.resource.data.ifscCode.matches('^[A-Z]{4}0[A-Z0-9]{6}$'))
+        )
         && request.resource.data.status == "pending"
         && request.resource.data.requestId == id
         && request.resource.data.createdAt == request.time
@@ -120,10 +137,14 @@ service cloud.firestore {
         && userBefore().data.wallet >= request.resource.data.amount
         && userAfter().data.wallet == userBefore().data.wallet - request.resource.data.amount
         && userAfter().data.lastWithdrawalRequestId == id;
+
       allow update: if admin()
         && request.resource.data.workerId == resource.data.workerId
         && request.resource.data.amount == resource.data.amount
         && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.paymentMethod == resource.data.paymentMethod
+        && request.resource.data.transferType == resource.data.transferType
+        && request.resource.data.upiId == resource.data.upiId
         && request.resource.data.accountNumber == resource.data.accountNumber
         && request.resource.data.bankName == resource.data.bankName
         && request.resource.data.ifscCode == resource.data.ifscCode
@@ -140,6 +161,7 @@ service cloud.firestore {
             && request.resource.data.status in ["processing", "paid", "rejected"])
         )
         && (request.resource.data.status != "paid" || request.resource.data.proofUrl is string);
+
       allow delete: if admin() && resource.data.status == "pending";
     }
 
