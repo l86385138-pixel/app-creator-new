@@ -6,14 +6,14 @@ service cloud.firestore {
     function signedIn(){ return request.auth != null; }
     function me(){ return /databases/$(database)/documents/users/$(request.auth.uid); }
     function admin(){ return signedIn() && ((request.auth.token.admin == true) || (exists(me()) && get(me()).data.role in ["admin", "Admin", "ADMIN"]) || (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "admin" && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isActive == true)); }
-    function worker(){ return signedIn() && exists(me()) && get(me()).data.role == "worker"; }
-    function member(){ return signedIn() && exists(me()) && get(me()).data.role == "member"; }
+    function worker(){ return signedIn() && exists(me()) && get(me()).data.role in ["worker", "Worker", "WORKER"]; }
+    function member(){ return signedIn() && exists(me()) && get(me()).data.role in ["member", "Member", "MEMBER"]; }
     function validWithdrawalDebit(uid, oldUser, newUser) {
       let wid = newUser.lastWithdrawalRequestId;
       let withdrawalPath = /databases/$(database)/documents/withdrawals/$(wid);
       return signedIn()
         && request.auth.uid == uid
-        && oldUser.role in ["worker", "member"]
+        && oldUser.role in ["worker", "Worker", "WORKER", "member", "Member", "MEMBER"]
         && oldUser.wallet is number
         && newUser.wallet is number
         && newUser.wallet >= 0
