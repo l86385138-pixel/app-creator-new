@@ -1,6 +1,6 @@
 {
   "name": "gigbiz-admin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Gigbiz Windows Admin App",
   "main": "main.js",
   "author": "Great India Technology",
@@ -29,7 +29,7 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "Gigbiz-Admin-Setup-1.0.1.exe"
+      "artifactName": "Gigbiz-Admin-Setup-1.0.2.exe"
     },
     "nsis": {
       "oneClick": false,
