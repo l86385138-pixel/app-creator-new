@@ -254,8 +254,12 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
    String uid=auth.getCurrentUser().getUid();
    LinearLayout root=base();topBar(root,"My Payment Slips");
    ScrollView scroll=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);list.setPadding(dp(14),dp(10),dp(14),dp(24));scroll.addView(list);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-   list.addView(tv("Payment slips uploaded by Admin for your withdrawal requests will appear here.",13,false));
-   db.collection("withdrawals").whereEqualTo("workerId",uid).get().addOnSuccessListener(q->{
+   list.addView(tv("Payment slips uploaded by Admin will appear here automatically.",13,false));
+   setContentView(root);
+   db.collection("withdrawals").whereEqualTo("workerId",uid).addSnapshotListener((q,error)->{
+    if(error!=null){toast("Payment slips could not be refreshed: "+err(error));return;}
+    if(q==null)return;
+    while(list.getChildCount()>1)list.removeViewAt(1);
     int found=0;
     for(DocumentSnapshot d:q){
      Object raw=d.get("proofUrl");String url=raw==null?"":String.valueOf(raw).trim();if(url.isEmpty())continue;
@@ -280,8 +284,7 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
      LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,dp(7),0,dp(7));list.addView(card,cp);
     }
     if(found==0)list.addView(tv("No payment slips uploaded by Admin yet.",14,false));
-   }).addOnFailureListener(e->toast("Payment slips could not be loaded: "+err(e)));
-   setContentView(root);
+   });
   }
 
 void showWithdrawalDetails(DocumentSnapshot d){
