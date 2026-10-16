@@ -152,10 +152,11 @@ async function withdrawals(){
      const bank=method==='UPI'?'<b>UPI</b><br>'+esc(x.upiId||''):'<b>'+esc(x.bankName||'')+'</b><br>A/C '+esc(x.accountNumber||'')+'<br>IFSC '+esc(x.ifscCode||x.ifsc||'');
      const proof=x.proofUrl?'<a target="_blank" rel="noreferrer" href="'+esc(x.proofUrl)+'">View/download slip</a>':'<span style="color:#b45309">No receipt uploaded</span>';
      const ref=x.paymentReference?'<br><b>UTR:</b> '+esc(x.paymentReference):'';
-     const actions=(status==='pending'?'<button class="btn success" onclick="wdStatus(\''+d.id+'\',\'approved\')">Approve Request</button> ':'')+
-       ((status==='pending'||status==='processing')?'<button class="btn danger" onclick="wdStatus(\''+d.id+'\',\'rejected\')">Reject / Return Balance</button> ':'')+
-       ((status==='processing'||status==='approved')?'<button class="btn secondary" onclick="wdProof(\''+d.id+'\')">Upload payment slip</button> ':'')+
-       ((status==='processing'||status==='approved')&&x.proofUrl?'<button class="btn primary" onclick="wdMarkPaid(\''+d.id+'\')">Record UTR + Mark Paid</button> ':'');
+     const actions=(status==='pending'?'<button class="btn success" onclick="wdStatus(\\''+d.id+'\\',\\'processing\\')">Approve Request</button> ':'')+
+       ((status==='pending'||status==='processing')?'<button class="btn danger" onclick="wdStatus(\\''+d.id+'\\',\\'rejected\\')">Reject / Return Balance</button> ':'')+
+       ((status==='processing'||status==='approved')?'<button class="btn secondary" onclick="wdProof(\\''+d.id+'\\')">Upload payment slip</button> ':'')+
+       ((status==='processing'||status==='approved')?'<button class="btn primary" onclick="wdCompletePayment(\\''+d.id+'\\')">Payment Complete / Done</button> ':'')+
+       ((status==='processing'||status==='approved')&&x.proofUrl?'<button class="btn secondary" onclick="wdMarkPaid(\\''+d.id+'\\')">Record UTR + Mark Paid</button> ':'');
      rows.push([esc(x.workerEmail||x.workerId||''),esc(d.id),'₹'+esc(x.amount||'0'),bank,esc(status.toUpperCase())+'<br>'+esc(method)+' • '+esc(transfer),proof+ref,'<button class="btn secondary" onclick="wdDetails(\''+d.id+'\')">Full Details</button> '+(actions||'—')]);
    });
    holder.innerHTML=table('Withdrawal Requests',['Worker / UID','Request ID','Amount','Bank Details','Status','Payment Receipt / UTR','Actions'],rows);
