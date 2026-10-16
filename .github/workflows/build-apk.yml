@@ -37,19 +37,12 @@ jobs:
             exit 1
           fi
 
-      - name: Restore original Android signing key
+      - name: Generate temporary release signing key
         working-directory: android
-        env:
-          ANDROID_SIGNING_KEY_BASE64: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${ANDROID_SIGNING_KEY_BASE64:-}" ]; then
-            echo "::error::Original signing key is not configured. Add repository secret ANDROID_SIGNING_KEY_BASE64 containing the original .jks file encoded as Base64. Do not generate a new key."
-            exit 1
-          fi
-          printf '%s' "$ANDROID_SIGNING_KEY_BASE64" | base64 --decode > release-keystore.jks
-          test -s release-keystore.jks
+          keytool -genkeypair -v -keystore release-keystore.jks -alias appcreator -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=GigSathi, OU=Android, O=Great India Technology, L=Gaya, ST=Bihar, C=IN"
 
       - name: Build Release APK
         working-directory: android
