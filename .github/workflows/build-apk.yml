@@ -37,30 +37,16 @@ jobs:
             exit 1
           fi
 
-      - name: Restore or generate release signing key
+      - name: Generate fresh release signing key
         working-directory: android
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD_SECRET: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS_SECRET: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD_SECRET: ${{ secrets.ANDROID_KEY_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
-            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release-keystore.jks
-            test -s release-keystore.jks
-            STORE_PASS="$ANDROID_KEYSTORE_PASSWORD_SECRET"
-            KEY_ALIAS="${ANDROID_KEY_ALIAS_SECRET:-appcreator}"
-            KEY_PASS="${ANDROID_KEY_PASSWORD_SECRET:-$STORE_PASS}"
-            echo "Using repository-provided signing key."
-          else
-            echo "::warning::No persistent keystore secret found. Creating a temporary signing key for this build. Keep this key if you want to update this exact signed app later."
-            STORE_PASS="GigSathiTemp-2026-Only"
-            KEY_PASS="$STORE_PASS"
-            KEY_ALIAS="appcreator"
-            keytool -genkeypair -noprompt -keystore release-keystore.jks -storepass "$STORE_PASS" -keypass "$KEY_PASS" -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Great India Technology, OU=GigSathi, O=Great India Technology, L=Gaya, ST=Bihar, C=IN"
-          fi
+          rm -f release-keystore.jks
+          STORE_PASS="GigSathiTemp-2026-Only"
+          KEY_ALIAS="appcreator"
+          KEY_PASS="$STORE_PASS"
+          keytool -genkeypair -noprompt -keystore release-keystore.jks -storepass "$STORE_PASS" -keypass "$KEY_PASS" -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Great India Technology, OU=GigSathi, O=Great India Technology, L=Gaya, ST=Bihar, C=IN"
           {
             echo "ANDROID_KEYSTORE_PASSWORD=$STORE_PASS"
             echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
@@ -69,18 +55,10 @@ jobs:
 
       - name: Build Release APK
         working-directory: android
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Build Release AAB
         working-directory: android
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle bundleRelease --no-daemon --stacktrace
 
       - name: Validate APK
