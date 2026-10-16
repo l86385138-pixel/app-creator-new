@@ -154,7 +154,7 @@ async function withdrawals(){
      const ref=x.paymentReference?'<br><b>UTR:</b> '+esc(x.paymentReference):'';
      const actions=(status==='pending'?'<button class="btn success" onclick="wdStatus(\''+d.id+'\',\'processing\')">Approve / Processing</button> ':'')+
        ((status==='pending'||status==='processing')?'<button class="btn danger" onclick="wdStatus(\''+d.id+'\',\'rejected\')">Reject / Return Balance</button> ':'')+
-       ((status==='processing'||status==='pending')?'<button class="btn secondary" onclick="wdProof(\''+d.id+'\')">Upload payment slip</button> ':'')+
+       (status==='processing'?'<button class="btn secondary" onclick="wdProof(\''+d.id+'\')">Upload payment slip</button> ':'')+
        (status==='processing'&&x.proofUrl?'<button class="btn primary" onclick="wdMarkPaid(\''+d.id+'\')">Record UTR + Mark Paid</button> ':'');
      rows.push([esc(x.workerEmail||x.workerId||''),esc(d.id),'₹'+esc(x.amount||'0'),bank,esc(status.toUpperCase())+'<br>'+esc(method)+' • '+esc(transfer),proof+ref,'<button class="btn secondary" onclick="wdDetails(\''+d.id+'\')">Full Details</button> '+(actions||'—')]);
    });
