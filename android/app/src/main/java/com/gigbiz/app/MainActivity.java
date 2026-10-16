@@ -247,7 +247,50 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
    EditText pinInput=field("Enter 6 digit Withdrawal PIN");pinInput.setInputType(2);pinInput.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());new AlertDialog.Builder(this).setTitle("Verify Withdrawal PIN").setView(pinInput).setNegativeButton("CANCEL",null).setPositiveButton("VERIFY",(di,which)->{String entered=pinInput.getText().toString().trim();String salt=pref.getString("withdrawPinSalt",""),hash=pref.getString("withdrawPinHash","");if(!entered.matches("\\d{6}")||!pinHash(salt,entered).equals(hash)){toast("Incorrect PIN. Withdrawal request was not submitted.");return;}final double requestAmount=amount;DocumentReference ur=db.collection("users").document(uid);DocumentReference wr=db.collection("withdrawals").document();db.runTransaction(t->{DocumentSnapshot us=t.get(ur);Object ow=us.get("wallet");double current=ow instanceof Number?((Number)ow).doubleValue():0;if(requestAmount>current)throw new FirebaseFirestoreException("Insufficient wallet balance.",FirebaseFirestoreException.Code.ABORTED);Map<String,Object>m=new HashMap<>();m.put("workerId",uid);m.put("workerEmail",auth.getCurrentUser().getEmail());m.put("amount",requestAmount);m.put("paymentMethod",method);m.put("transferType",transfer);m.put("upiId","UPI".equals(method)?upiId:"");m.put("accountHolder","BANK ACCOUNT".equals(method)?holderName:"");m.put("accountNumber","BANK ACCOUNT".equals(method)?ac:"");m.put("bankName","BANK ACCOUNT".equals(method)?bn:"");m.put("ifscCode","BANK ACCOUNT".equals(method)?code:"");m.put("status","pending");m.put("createdAt",FieldValue.serverTimestamp());m.put("requestId",wr.getId());t.update(ur,"wallet",current-requestAmount,"updatedAt",FieldValue.serverTimestamp(),"lastWithdrawalRequestId",wr.getId());t.set(wr,m);return null;}).addOnSuccessListener(x->{toast("Withdrawal request submitted. Balance reserved until processing.");withdrawScreen();}).addOnFailureListener(ex->toast(err(ex)));}).show();
   });
   TextView h=tv("WITHDRAWAL HISTORY",18,true);h.setPadding(0,dp(22),0,dp(8));c.addView(h);
-  db.collection("withdrawals").whereEqualTo("workerId",uid).addSnapshotListener((q,error)->{if(error!=null){toast("Withdrawal history update failed: "+err(error));return;}if(q==null)return;for(DocumentSnapshot d:q){LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setPadding(dp(12),dp(10),dp(12),dp(10));card.setBackground(stroke(Color.rgb(220,225,232),1,12));String status=String.valueOf(d.get("status")==null?"pending":d.get("status"));card.addView(tv("₹"+String.valueOf(d.get("amount")==null?"0":d.get("amount"))+" • "+status.toUpperCase(Locale.US),15,true));card.addView(tv(String.valueOf(d.get("bankName")==null?"":d.get("bankName"))+" • A/C "+maskAccount(String.valueOf(d.get("accountNumber")==null?"":d.get("accountNumber"))),12,false));card.addView(tv("Request ID: "+d.getId(),11,false));card.addView(tv("Tap to view full transaction details",11,false));card.setOnClickListener(v->showWithdrawalDetails(d));Object proof=d.get("proofUrl");if(proof!=null&&!String.valueOf(proof).isEmpty()){TextView proofBtn=button("VIEW / DOWNLOAD PAYMENT SLIP",purple);card.addView(proofBtn);proofBtn.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(String.valueOf(proof))));}catch(Exception e){toast("Unable to open payment slip.");}});}Object paymentRef=d.get("paymentReference");if(paymentRef!=null&&!String.valueOf(paymentRef).isEmpty())card.addView(tv("Payment UTR / Reference: "+paymentRef,12,false));Object note=d.get("adminNote");if(note!=null)card.addView(tv("Admin note: "+note,12,false));c.addView(card,new LinearLayout.LayoutParams(-1,-2));LinearLayout.LayoutParams cp=(LinearLayout.LayoutParams)card.getLayoutParams();cp.setMargins(0,dp(5),0,dp(5));card.setLayoutParams(cp);}});
+  final int historyStartIndex=c.getChildCount();
+  db.collection("withdrawals").whereEqualTo("workerId",uid).addSnapshotListener((q,error)->{
+   if(error!=null){toast("Withdrawal history update failed: "+err(error));return;}
+   if(q==null)return;
+   while(c.getChildCount()>historyStartIndex)c.removeViewAt(historyStartIndex);
+   if(q.isEmpty()){c.addView(tv("No withdrawal requests yet.",13,false));return;}
+   List<DocumentSnapshot> history=new ArrayList<>();
+   for(DocumentSnapshot d:q)history.add(d);
+   Collections.sort(history,(a,b)->{
+    Object at=a.get("createdAt"),bt=b.get("createdAt");
+    long av=at instanceof com.google.firebase.Timestamp?((com.google.firebase.Timestamp)at).toDate().getTime():0;
+    long bv=bt instanceof com.google.firebase.Timestamp?((com.google.firebase.Timestamp)bt).toDate().getTime():0;
+    return Long.compare(bv,av);
+   });
+   for(DocumentSnapshot d:history){
+    LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setPadding(dp(12),dp(10),dp(12),dp(10));card.setBackground(stroke(Color.rgb(220,225,232),1,12));
+    String rawStatus=String.valueOf(d.get("status")==null?"pending":d.get("status")).trim().toLowerCase(Locale.US);
+    String displayStatus;
+    if("processing".equals(rawStatus)||"approved".equals(rawStatus)||"approval".equals(rawStatus))displayStatus="APPROVED • PAYMENT PROCESSING";
+    else if("paid".equals(rawStatus)||"completed".equals(rawStatus))displayStatus="PAID";
+    else if("rejected".equals(rawStatus)||"reject".equals(rawStatus))displayStatus="REJECTED";
+    else displayStatus="PENDING ADMIN APPROVAL";
+    TextView statusView=tv("₹"+String.valueOf(d.get("amount")==null?"0":d.get("amount"))+" • "+displayStatus,15,true);
+    if("paid".equals(rawStatus)||"completed".equals(rawStatus))statusView.setTextColor(green);
+    else if("rejected".equals(rawStatus)||"reject".equals(rawStatus))statusView.setTextColor(Color.RED);
+    else statusView.setTextColor(purple);
+    card.addView(statusView);
+    String method=String.valueOf(d.get("paymentMethod")==null?"":d.get("paymentMethod"));
+    String bankName=String.valueOf(d.get("bankName")==null?"":d.get("bankName"));
+    String account=String.valueOf(d.get("accountNumber")==null?"":d.get("accountNumber"));
+    card.addView(tv(("UPI".equalsIgnoreCase(method)?String.valueOf(d.get("upiId")==null?"":d.get("upiId")):bankName+" • A/C "+maskAccount(account)),12,false));
+    card.addView(tv("Request ID: "+d.getId(),11,false));
+    Object ref=d.get("paymentReference");
+    if(ref!=null&&!String.valueOf(ref).trim().isEmpty())card.addView(tv("Payment UTR / Reference: "+ref,12,false));
+    Object note=d.get("adminNote");if(note!=null&&!String.valueOf(note).trim().isEmpty())card.addView(tv("Admin note: "+note,12,false));
+    Object proof=d.get("proofUrl");
+    if(proof!=null&&!String.valueOf(proof).trim().isEmpty()){
+      TextView proofBtn=button("VIEW / DOWNLOAD PAYMENT SLIP",purple);card.addView(proofBtn);
+      proofBtn.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(String.valueOf(proof))));}catch(Exception ex){toast("Unable to open payment slip.");}});
+    }
+    card.setOnClickListener(v->showWithdrawalDetails(d));
+    LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,dp(5),0,dp(5));c.addView(card,cp);
+   }
+  });
   s.addView(c);r.addView(s,new LinearLayout.LayoutParams(-1,0,1));setContentView(r);});
  }
    void paymentSlipsScreen(){
