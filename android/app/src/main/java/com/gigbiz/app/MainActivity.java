@@ -99,7 +99,7 @@ public class MainActivity extends Activity {
   sectionTitle(c,"Popular projects","See all",v->gigsScreen());LinearLayout projects=new LinearLayout(this);HorizontalScrollView ph=new HorizontalScrollView(this);ph.setHorizontalScrollBarEnabled(false);ph.addView(projects);c.addView(ph,new LinearLayout.LayoutParams(-1,dp(155)));
   db.collection("gigs").whereEqualTo("status","active").limit(10).get().addOnSuccessListener(q->{if(q.isEmpty()){projects.addView(projectCard("Kotak 811","₹420","K",Color.rgb(208,31,53)));projects.addView(projectCard("Choice","₹250","✕",Color.rgb(54,49,150)));projects.addView(projectCard("Banking Project","₹300","₹",purple));}else for(DocumentSnapshot d:q){String t=d.getString("title");if(t==null)t="Project";View card=projectCard(t,"₹"+String.valueOf(d.get("pay")==null?"0":d.get("pay")),"₹",purple);card.setOnClickListener(v->gigDetail(d));projects.addView(card);}});
   sectionTitle(c,"All categories","View all",v->workCategoriesScreen());LinearLayout categoryList=new LinearLayout(this);categoryList.setOrientation(1);c.addView(categoryList);db.collection("categories").get().addOnSuccessListener(catSnap->{categoryList.removeAllViews();LinearLayout gr=null;int col=0;for(DocumentSnapshot cd:catSnap){String status=cd.getString("status");if(status!=null&&!status.trim().isEmpty()&&!status.equalsIgnoreCase("active"))continue;String cn=cd.getString("name");if(cn==null||cn.trim().isEmpty())cn=cd.getString("title");if(cn==null||cn.trim().isEmpty())continue;if(col%4==0){gr=new LinearLayout(this);gr.setOrientation(0);categoryList.addView(gr);}String[] item={cd.getString("icon")==null?"▣":cd.getString("icon"),cn};View tile=categoryTile(item[0],item[1]);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(122),1);p.setMargins(dp(2),dp(3),dp(2),dp(5));gr.addView(tile,p);String categoryId=cd.getId(),categoryName=cn;tile.setOnClickListener(v->categoryItemsScreen(categoryId,categoryName));col++;}if(col==0)categoryList.addView(tv("Admin will add categories here.",13,false));}).addOnFailureListener(e->toast("Categories unavailable: "+err(e)));
-  TextView team=button("MY TEAM  •  ADD / MANAGE MEMBERS",purple);add(c,team,52,12);team.setOnClickListener(v->teamScreen());TextView training=button("VIEW TRAININGS",purple2);add(c,training,50,8);training.setOnClickListener(v->trainingScreen());TextView marketing=button("📣 MARKETING MATERIALS",green);add(c,marketing,50,8);marketing.setOnClickListener(v->marketingScreen());root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));root.addView(bottomNav(),new LinearLayout.LayoutParams(-1,dp(68)));setContentView(root);
+  TextView team=button("MY TEAM  •  ADD / MANAGE MEMBERS",purple);add(c,team,52,12);team.setOnClickListener(v->teamScreen());TextView training=button("VIEW TRAININGS",purple2);add(c,training,50,8);training.setOnClickListener(v->trainingScreen());TextView marketing=button("📣 MARKETING MATERIALS",green);add(c,marketing,50,8);marketing.setOnClickListener(v->marketingScreen());TextView slips=button("🧾 PAYMENT SLIPS • VIEW / DOWNLOAD",Color.rgb(8,42,91));add(c,slips,52,8);slips.setOnClickListener(v->paymentSlipsScreen());root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));root.addView(bottomNav(),new LinearLayout.LayoutParams(-1,dp(68)));setContentView(root);
  }
  double numberVal(Object o){return o instanceof Number?((Number)o).doubleValue():0.0;}
  View quickHeaderItem(String symbol,String label,int color){LinearLayout x=new LinearLayout(this);x.setOrientation(1);x.setGravity(Gravity.CENTER);TextView i=tv(symbol,23,true);i.setTextColor(color);i.setGravity(Gravity.CENTER);i.setBackground(bg(Color.rgb(242,246,252),50));x.addView(i,new LinearLayout.LayoutParams(dp(40),dp(40)));TextView t=tv(label,12,true);t.setGravity(Gravity.CENTER);x.addView(t);return x;}
@@ -250,7 +250,41 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
   db.collection("withdrawals").whereEqualTo("workerId",uid).get().addOnSuccessListener(q->{for(DocumentSnapshot d:q){LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setPadding(dp(12),dp(10),dp(12),dp(10));card.setBackground(stroke(Color.rgb(220,225,232),1,12));String status=String.valueOf(d.get("status")==null?"pending":d.get("status"));card.addView(tv("₹"+String.valueOf(d.get("amount")==null?"0":d.get("amount"))+" • "+status.toUpperCase(Locale.US),15,true));card.addView(tv(String.valueOf(d.get("bankName")==null?"":d.get("bankName"))+" • A/C "+maskAccount(String.valueOf(d.get("accountNumber")==null?"":d.get("accountNumber"))),12,false));card.addView(tv("Request ID: "+d.getId(),11,false));card.addView(tv("Tap to view full transaction details",11,false));card.setOnClickListener(v->showWithdrawalDetails(d));Object proof=d.get("proofUrl");if(proof!=null&&!String.valueOf(proof).isEmpty()){TextView proofBtn=button("VIEW / DOWNLOAD PAYMENT SLIP",purple);card.addView(proofBtn);proofBtn.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(String.valueOf(proof))));}catch(Exception e){toast("Unable to open payment slip.");}});}Object paymentRef=d.get("paymentReference");if(paymentRef!=null&&!String.valueOf(paymentRef).isEmpty())card.addView(tv("Payment UTR / Reference: "+paymentRef,12,false));Object note=d.get("adminNote");if(note!=null)card.addView(tv("Admin note: "+note,12,false));c.addView(card,new LinearLayout.LayoutParams(-1,-2));LinearLayout.LayoutParams cp=(LinearLayout.LayoutParams)card.getLayoutParams();cp.setMargins(0,dp(5),0,dp(5));card.setLayoutParams(cp);}});
   s.addView(c);r.addView(s,new LinearLayout.LayoutParams(-1,0,1));setContentView(r);});
  }
- void showWithdrawalDetails(DocumentSnapshot d){
+   void paymentSlipsScreen(){
+   String uid=auth.getCurrentUser().getUid();
+   LinearLayout root=base();topBar(root,"My Payment Slips");
+   ScrollView scroll=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);list.setPadding(dp(14),dp(10),dp(14),dp(24));scroll.addView(list);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+   list.addView(tv("Payment slips uploaded by Admin for your withdrawal requests will appear here.",13,false));
+   db.collection("withdrawals").whereEqualTo("workerId",uid).get().addOnSuccessListener(q->{
+    int found=0;
+    for(DocumentSnapshot d:q){
+     Object raw=d.get("proofUrl");String url=raw==null?"":String.valueOf(raw).trim();if(url.isEmpty())continue;
+     found++;LinearLayout card=new LinearLayout(this);card.setOrientation(1);card.setPadding(dp(13),dp(12),dp(13),dp(12));card.setBackground(stroke(Color.rgb(220,225,232),1,12));
+     card.addView(tv("Payment Slip • ₹"+String.valueOf(d.get("amount")==null?"0":d.get("amount")),16,true));
+     card.addView(tv("Status: "+String.valueOf(d.get("status")==null?"pending":d.get("status")).toUpperCase(Locale.US),12,false));
+     card.addView(tv("Request ID: "+d.getId(),11,false));
+     Object ref=d.get("paymentReference");if(ref!=null&&!String.valueOf(ref).trim().isEmpty())card.addView(tv("Payment Reference: "+String.valueOf(ref),12,false));
+     TextView download=button("⬇ DOWNLOAD PAYMENT SLIP",purple);add(card,download,48,10);
+     download.setOnClickListener(v->{
+      try{
+       Uri uri=Uri.parse(url);String scheme=uri.getScheme();
+       if(!"https".equalsIgnoreCase(scheme)&&!"http".equalsIgnoreCase(scheme)){toast("Payment slip URL is invalid.");return;}
+       String requestId=d.getId().replaceAll("[^A-Za-z0-9_-]","_");
+       String fileName="GigSathi_Payment_Slip_"+requestId;
+       String path=uri.getPath();if(path!=null&&path.toLowerCase(Locale.ROOT).endsWith(".pdf"))fileName+=".pdf";else if(path!=null&&path.toLowerCase(Locale.ROOT).matches(".*\\.(jpg|jpeg|png)$"))fileName+=".jpg";else fileName+=".file";
+       DownloadManager.Request req=new DownloadManager.Request(uri);
+       req.setTitle("GigSathi Payment Slip");req.setDescription("Downloading payment slip");req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);req.setAllowedOverMetered(true);req.setAllowedOverRoaming(true);req.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS,fileName);
+       DownloadManager manager=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);if(manager==null){startActivity(new Intent(Intent.ACTION_VIEW,uri));return;}manager.enqueue(req);toast("Payment slip download started. Check Downloads/notification.");
+      }catch(Exception ex){toast("Download failed. Opening payment slip instead.");try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception ignored){toast("Unable to open payment slip.");}}
+     });
+     LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,dp(7),0,dp(7));list.addView(card,cp);
+    }
+    if(found==0)list.addView(tv("No payment slips uploaded by Admin yet.",14,false));
+   }).addOnFailureListener(e->toast("Payment slips could not be loaded: "+err(e)));
+   setContentView(root);
+  }
+
+void showWithdrawalDetails(DocumentSnapshot d){
   String status=String.valueOf(d.get("status")==null?"pending":d.get("status")).toUpperCase(Locale.US);
   String method=String.valueOf(d.get("paymentMethod")==null?"":d.get("paymentMethod"));
   StringBuilder detail=new StringBuilder();
