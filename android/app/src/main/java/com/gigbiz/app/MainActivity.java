@@ -276,8 +276,8 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
     card.addView(statusView);
     String method=String.valueOf(d.get("paymentMethod")==null?"":d.get("paymentMethod"));
     String bankName=String.valueOf(d.get("bankName")==null?"":d.get("bankName"));
-    String account=String.valueOf(d.get("accountNumber")==null?"":d.get("accountNumber"));
-    card.addView(tv(("UPI".equalsIgnoreCase(method)?String.valueOf(d.get("upiId")==null?"":d.get("upiId")):bankName+" • A/C "+maskAccount(account)),12,false));
+    String historyAccount=String.valueOf(d.get("accountNumber")==null?"":d.get("accountNumber"));
+    card.addView(tv(("UPI".equalsIgnoreCase(method)?String.valueOf(d.get("upiId")==null?"":d.get("upiId")):bankName+" • A/C "+maskAccount(historyAccount)),12,false));
     card.addView(tv("Request ID: "+d.getId(),11,false));
     Object ref=d.get("paymentReference");
     if(ref!=null&&!String.valueOf(ref).trim().isEmpty())card.addView(tv("Payment UTR / Reference: "+ref,12,false));
