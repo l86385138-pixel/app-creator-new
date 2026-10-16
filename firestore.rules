@@ -155,7 +155,7 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "status", "proofUrl", "proofPath", "proofFileName", "proofUploadedAt",
           "proofUploadedBy", "paymentReference", "paymentReferenceRecordedAt",
-          "approvedAt", "approvedBy", "paidAt", "paidBy", "rejectedAt",
+          "approvedAt", "approvedBy", "paidAt", "paidBy", "paymentCompletedAt", "paymentCompletedBy", "rejectedAt",
           "rejectedBy", "updatedAt", "processedBy", "adminNote"
         ])
         && (
@@ -163,8 +163,9 @@ service cloud.firestore {
             && request.resource.data.status in ["processing", "rejected"])
           || (resource.data.status == "processing"
             && request.resource.data.status in ["processing", "paid", "rejected"])
-        )
-        && (request.resource.data.status != "paid" || request.resource.data.proofUrl is string);
+          || (resource.data.status == "approved"
+            && request.resource.data.status in ["approved", "paid", "rejected"])
+        );
 
       allow delete: if admin() && resource.data.status == "pending";
     }
