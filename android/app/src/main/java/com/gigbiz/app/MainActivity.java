@@ -266,7 +266,7 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
     String rawStatus=String.valueOf(d.get("status")==null?"pending":d.get("status")).trim().toLowerCase(Locale.US);
     String displayStatus;
     if("processing".equals(rawStatus)||"approved".equals(rawStatus)||"approval".equals(rawStatus))displayStatus="APPROVED • PAYMENT PROCESSING";
-    else if("paid".equals(rawStatus)||"completed".equals(rawStatus))displayStatus="PAID";
+    else if("paid".equals(rawStatus)||"completed".equals(rawStatus))displayStatus="PAYMENT COMPLETE • DONE";
     else if("rejected".equals(rawStatus)||"reject".equals(rawStatus))displayStatus="REJECTED";
     else displayStatus="PENDING ADMIN APPROVAL";
     TextView statusView=tv("₹"+String.valueOf(d.get("amount")==null?"0":d.get("amount"))+" • "+displayStatus,15,true);
