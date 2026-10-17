@@ -10,7 +10,7 @@ android {
         applicationId 'technology.greatindia.gigsathiapp'
         minSdk 23
         targetSdk 35
-        versionCode 105
+        versionCode 106
         versionName '10.5'
     }
     signingConfigs {
