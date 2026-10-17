@@ -37,20 +37,26 @@ jobs:
             exit 1
           fi
 
-      - name: Generate fresh release signing key
+      - name: Restore existing release signing key
         working-directory: android
         shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD_SECRET: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS_SECRET: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD_SECRET: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          rm -f release-keystore.jks
-          STORE_PASS="GigSathiTemp-2026-Only"
-          KEY_ALIAS="appcreator"
-          KEY_PASS="$STORE_PASS"
-          keytool -genkeypair -noprompt -keystore release-keystore.jks -storepass "$STORE_PASS" -keypass "$KEY_PASS" -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Great India Technology, OU=GigSathi, O=Great India Technology, L=Gaya, ST=Bihar, C=IN"
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ] || [ -z "${ANDROID_KEYSTORE_PASSWORD_SECRET:-}" ] || [ -z "${ANDROID_KEY_ALIAS_SECRET:-}" ] || [ -z "${ANDROID_KEY_PASSWORD_SECRET:-}" ]; then
+            echo "::error::Same-signature release requires the original keystore. Add GitHub Actions secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release-keystore.jks
+          test -s release-keystore.jks
           {
-            echo "ANDROID_KEYSTORE_PASSWORD=$STORE_PASS"
-            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
-            echo "ANDROID_KEY_PASSWORD=$KEY_PASS"
+            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD_SECRET"
+            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS_SECRET"
+            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD_SECRET"
           } >> "$GITHUB_ENV"
 
       - name: Build Release APK
