@@ -7,7 +7,7 @@ const { getStorage, ref: storageRef, uploadBytes, getDownloadURL } = require('fi
 const cfg = require('./firebase-config');
 const fb = initializeApp(cfg); const auth=getAuth(fb); const db=getFirestore(fb); const storage = getStorage(fb); const root=document.getElementById('app');
 const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const css='<style>
+const css=`<style>
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#f5f6fb;color:#202331}button,input,textarea,select{font:inherit}
 .top{min-height:72px;background:#fff;border-bottom:1px solid #e2e5ec;display:flex;align-items:center;padding:12px 24px;gap:18px;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px #18223b08}
 .brand{font-size:24px;font-weight:900;color:#6d3abe;white-space:nowrap}.spacer{flex:1;min-width:12px}.top .muted{white-space:nowrap}
@@ -23,7 +23,7 @@ const css='<style>
 @media(max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.app-layout{grid-template-columns:190px minmax(0,1fr)}}
 @media(max-width:800px){.top{padding:12px 14px;gap:10px;flex-wrap:wrap}.brand{font-size:20px}.wrap{padding:12px}.app-layout{grid-template-columns:1fr}.nav{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:8px}.nav .btn{text-align:center;padding:10px 6px}.form{grid-template-columns:1fr}.full{grid-column:auto}}
 @media(max-width:520px){.grid{grid-template-columns:1fr}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.top .muted{font-size:12px}.content h1{font-size:23px}}
-</style>';
+</style>`;
 let current='dashboard';
 let withdrawalsUnsubscribe=null;
 const nav=[['dashboard','📊 Dashboard'],['users','👤 Users'],['projects','📁 Projects'],['gigs','💼 Gigs'],['services','🛠 Services'],['categories','🗂 Categories'],['workers','👥 Workers'],['applications','📋 Applications'],['leads','🎯 Leads'],['tasks','✅ Tasks'],['withdrawals','💰 Withdrawals'],['trainings','🎓 Training'],['marketing','📣 Marketing'],['offers','🖼 Offers']];
