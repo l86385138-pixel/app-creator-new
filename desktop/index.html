@@ -1,6 +1,36 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gigbiz Admin Login</title>
-<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f5fa;font-family:Arial,sans-serif;color:#202331}#app{width:100%;padding:20px}.boot-login{max-width:420px;margin:auto;background:#fff;padding:30px;border:1px solid #ddd;border-radius:18px;box-shadow:0 12px 36px #15204412}.boot-logo{font-size:24px;font-weight:900;color:#6d3abe}.muted{color:#737783;font-size:13px}#boot-error{color:#b42318;white-space:pre-wrap}</style></head>
-<body><div id="app"><div class="boot-login"><div class="boot-logo">GIGBIZ</div><h1>Admin Login</h1><p class="muted">Windows Admin App — Admin only</p><p class="muted">Loading secure login…</p><div id="boot-error"></div></div></div>
-<script>window.addEventListener('error',function(e){var el=document.getElementById('boot-error');if(el)el.textContent='App startup error: '+(e.message||'Please reinstall the latest Admin app.');});window.addEventListener('unhandledrejection',function(e){var el=document.getElementById('boot-error');if(el)el.textContent='App startup error: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason));});</script>
-<script src="renderer.js"></script></body></html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gigbiz Admin Login</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f5fa;font-family:Arial,sans-serif;color:#202331}
+#app{width:100%;padding:20px}.boot-login,.login{width:100%;max-width:420px;margin:auto;background:#fff;padding:30px;border:1px solid #ddd;border-radius:18px;box-shadow:0 12px 36px #15204412}
+.boot-logo,.brand{font-size:24px;font-weight:900;color:#6d3abe}.muted{color:#737783;font-size:13px}
+.input{display:block;width:100%;padding:12px;margin:12px 0;border:1px solid #ccd2dc;border-radius:9px;font:inherit}
+.btn{padding:11px 16px;border:0;border-radius:9px;background:#6d3abe;color:#fff;font-weight:700;cursor:pointer;width:100%;margin-top:8px}
+#boot-error,#err{color:#b42318;white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="boot-login">
+    <div class="boot-logo">GIGBIZ</div>
+    <h1>Admin Login</h1>
+    <p class="muted">Windows Admin App — Admin only</p>
+    <form onsubmit="event.preventDefault(); if(typeof window.doLogin==='function'){window.doLogin()}else{document.getElementById('boot-error').textContent='Login engine did not start. Please close this app and install the latest Windows Admin build.'}">
+      <input id="email" class="input" type="email" value="klav0628@gmail.com" placeholder="Admin email" autocomplete="username" required>
+      <input id="pass" class="input" type="password" placeholder="Admin password" autocomplete="current-password" required>
+      <button class="btn" type="submit">LOGIN</button>
+    </form>
+    <p id="boot-error" role="alert"></p>
+  </div>
+</div>
+<script>
+window.addEventListener('error',function(e){var el=document.getElementById('boot-error');if(el)el.textContent='App startup error: '+(e.message||'Please reinstall the latest Admin app.');});
+window.addEventListener('unhandledrejection',function(e){var el=document.getElementById('boot-error');if(el)el.textContent='App startup error: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason));});
+</script>
+<script src="./renderer.js"></script>
+</body>
+</html>
