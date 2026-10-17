@@ -19,7 +19,7 @@ import java.util.*;
 import java.net.URLEncoder;
 
 public class MainActivity extends Activity {
- FirebaseAuth auth; FirebaseFirestore db; FirebaseStorage storage; ImageView workerPhotoView; static final int PICK_WORKER_PHOTO=713;
+ FirebaseAuth auth; FirebaseFirestore db; FirebaseStorage storage; ImageView workerPhotoView; ListenerRegistration withdrawalHistoryListener; static final int PICK_WORKER_PHOTO=713;
  int purple=Color.rgb(109,58,190), purple2=Color.rgb(133,74,214), green=Color.rgb(38,198,112), dark=Color.rgb(27,43,52), muted=Color.rgb(105,113,122), bg=Color.rgb(249,250,252), white=Color.WHITE;
  int dp(int n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
  TextView tv(String s,float z,boolean b){TextView t=new TextView(this);t.setText(s);t.setTextSize(z);t.setTextColor(dark);t.setTypeface(Typeface.DEFAULT,b?Typeface.BOLD:Typeface.NORMAL);t.setPadding(dp(7),dp(5),dp(7),dp(5));return t;}
@@ -247,8 +247,10 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
    EditText pinInput=field("Enter 6 digit Withdrawal PIN");pinInput.setInputType(2);pinInput.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());new AlertDialog.Builder(this).setTitle("Verify Withdrawal PIN").setView(pinInput).setNegativeButton("CANCEL",null).setPositiveButton("VERIFY",(di,which)->{String entered=pinInput.getText().toString().trim();String salt=pref.getString("withdrawPinSalt",""),hash=pref.getString("withdrawPinHash","");if(!entered.matches("\\d{6}")||!pinHash(salt,entered).equals(hash)){toast("Incorrect PIN. Withdrawal request was not submitted.");return;}final double requestAmount=amount;DocumentReference ur=db.collection("users").document(uid);DocumentReference wr=db.collection("withdrawals").document();db.runTransaction(t->{DocumentSnapshot us=t.get(ur);Object ow=us.get("wallet");double current=ow instanceof Number?((Number)ow).doubleValue():0;if(requestAmount>current)throw new FirebaseFirestoreException("Insufficient wallet balance.",FirebaseFirestoreException.Code.ABORTED);Map<String,Object>m=new HashMap<>();m.put("workerId",uid);m.put("workerEmail",auth.getCurrentUser().getEmail());m.put("amount",requestAmount);m.put("paymentMethod",method);m.put("transferType",transfer);m.put("upiId","UPI".equals(method)?upiId:"");m.put("accountHolder","BANK ACCOUNT".equals(method)?holderName:"");m.put("accountNumber","BANK ACCOUNT".equals(method)?ac:"");m.put("bankName","BANK ACCOUNT".equals(method)?bn:"");m.put("ifscCode","BANK ACCOUNT".equals(method)?code:"");m.put("status","pending");m.put("createdAt",FieldValue.serverTimestamp());m.put("requestId",wr.getId());t.update(ur,"wallet",current-requestAmount,"updatedAt",FieldValue.serverTimestamp(),"lastWithdrawalRequestId",wr.getId());t.set(wr,m);return null;}).addOnSuccessListener(x->{toast("Withdrawal request submitted. Balance reserved until processing.");withdrawScreen();}).addOnFailureListener(ex->toast(err(ex)));}).show();
   });
   TextView h=tv("WITHDRAWAL HISTORY",18,true);h.setPadding(0,dp(22),0,dp(8));c.addView(h);
+  TextView refreshStatus=button("↻ REFRESH PAYMENT STATUS",purple);add(c,refreshStatus,44,4);refreshStatus.setOnClickListener(v->{toast("Checking latest withdrawal status…");withdrawalDetailsScreen();});
   final int historyStartIndex=c.getChildCount();
-  db.collection("withdrawals").whereEqualTo("workerId",uid).addSnapshotListener((q,error)->{
+  if(withdrawalHistoryListener!=null){withdrawalHistoryListener.remove();withdrawalHistoryListener=null;}
+  withdrawalHistoryListener=db.collection("withdrawals").whereEqualTo("workerId",uid).addSnapshotListener((q,error)->{
    if(error!=null){toast("Withdrawal history update failed: "+err(error));return;}
    if(q==null)return;
    while(c.getChildCount()>historyStartIndex)c.removeViewAt(historyStartIndex);
@@ -266,11 +268,11 @@ View gigCard(DocumentSnapshot d){LinearLayout c=new LinearLayout(this);c.setOrie
     String rawStatus=String.valueOf(d.get("status")==null?"pending":d.get("status")).trim().toLowerCase(Locale.US);
     String displayStatus;
     if("processing".equals(rawStatus)||"approved".equals(rawStatus)||"approval".equals(rawStatus))displayStatus="APPROVED • PAYMENT PROCESSING";
-    else if("paid".equals(rawStatus)||"completed".equals(rawStatus))displayStatus="PAYMENT COMPLETE • DONE";
+    else if("paid".equals(rawStatus)||"completed".equals(rawStatus)||"complete".equals(rawStatus)||"done".equals(rawStatus)||"payment complete".equals(rawStatus)||"payment_completed".equals(rawStatus)||"success".equals(rawStatus))displayStatus="PAYMENT COMPLETE • DONE";
     else if("rejected".equals(rawStatus)||"reject".equals(rawStatus))displayStatus="REJECTED";
     else displayStatus="PENDING ADMIN APPROVAL";
     TextView statusView=tv("₹"+String.valueOf(d.get("amount")==null?"0":d.get("amount"))+" • "+displayStatus,15,true);
-    if("paid".equals(rawStatus)||"completed".equals(rawStatus))statusView.setTextColor(green);
+    if("paid".equals(rawStatus)||"completed".equals(rawStatus)||"complete".equals(rawStatus)||"done".equals(rawStatus)||"payment complete".equals(rawStatus)||"payment_completed".equals(rawStatus)||"success".equals(rawStatus))statusView.setTextColor(green);
     else if("rejected".equals(rawStatus)||"reject".equals(rawStatus))statusView.setTextColor(Color.RED);
     else statusView.setTextColor(purple);
     card.addView(statusView);
