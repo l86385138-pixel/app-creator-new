@@ -1,0 +1,27 @@
+name: GigSathi Release APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Generate signing key
+        working-directory: android
+        run: keytool -genkeypair -noprompt -keystore release-keystore.jks -alias appcreator -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname 'CN=GigSathi, O=Great India Technology, C=IN'
+      - name: Build release APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gigsathi-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 90
