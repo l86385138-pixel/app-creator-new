@@ -1,90 +1,38 @@
-name: Build GigSathi Release APK and AAB
-
+name: Build GigSathi Native Android APK
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-
+    paths:
+      - ".github/workflows/build-apk.yml"
 permissions:
   contents: read
-
 jobs:
   build:
-    name: Build GigSathi Android Release
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 25
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Check Firebase app configuration
-        shell: bash
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify native Android project
         run: |
-          set -euo pipefail
-          if ! grep -q '"package_name": "technology.greatindia.gigsathiapp"' android/app/google-services.json; then
-            echo "::error::android/app/google-services.json must be downloaded from Firebase for Android package technology.greatindia.gigsathiapp."
-            exit 1
-          fi
-
-      - name: Restore existing release signing key
+          test -f android/settings.gradle
+          test -f android/app/src/main/AndroidManifest.xml
+          test -f android/app/google-services.json
+      - name: Build installable native debug APK
         working-directory: android
-        shell: bash
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD_SECRET: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS_SECRET: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD_SECRET: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ] || [ -z "${ANDROID_KEYSTORE_PASSWORD_SECRET:-}" ] || [ -z "${ANDROID_KEY_ALIAS_SECRET:-}" ] || [ -z "${ANDROID_KEY_PASSWORD_SECRET:-}" ]; then
-            echo "::error::Same-signature release requires the original keystore. Add GitHub Actions secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD."
-            exit 1
-          fi
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release-keystore.jks
-          test -s release-keystore.jks
-          {
-            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD_SECRET"
-            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS_SECRET"
-            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD_SECRET"
-          } >> "$GITHUB_ENV"
-
-      - name: Build Release APK
-        working-directory: android
-        run: gradle assembleRelease --no-daemon --stacktrace
-
-      - name: Build Release AAB
-        working-directory: android
-        run: gradle bundleRelease --no-daemon --stacktrace
-
-      - name: Validate APK
-        run: test -s android/app/build/outputs/apk/release/app-release.apk
-
-      - name: Validate AAB
-        run: test -s android/app/build/outputs/bundle/release/app-release.aab
-
-      - name: Upload Release APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Verify APK
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: gigsathi-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload Release AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: gigsathi-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          name: gigsathi-native-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
