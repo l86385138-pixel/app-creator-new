@@ -2,7 +2,7 @@ name: GigSathi Native Release APK Build
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/gigsathi-release-apk-auto.yml']
+    paths: ['.github/workflows/gigsathi-release-apk-auto.yml', 'android/app/build.gradle', 'android/app/google-services.json']
   workflow_dispatch:
 permissions:
   contents: read
